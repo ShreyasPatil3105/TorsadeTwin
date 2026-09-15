@@ -5,10 +5,36 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import os
 import numpy as np
 
 from ..services.errors import TorsadeTwinError
 from .biomarkers import QNET_CURRENTS, compute_apd90, compute_qnet, compute_ra_flags, compute_diagnostics
+
+
+def _ensure_sundials_includes(myokit_module=None) -> None:
+    """Ensure Debian/Kali OpenMPI include paths are known to Myokit/Sundials."""
+    mpi_dirs = [
+        "/usr/lib/x86_64-linux-gnu/openmpi/include",
+        "/usr/include/x86_64-linux-gnu/mpi",
+        "/usr/include/x86_64-linux-gnu/openmpi",
+        "/usr/include/openmpi-x86_64",
+        "/usr/include/mpich",
+        "/usr/include/x86_64-linux-gnu/mpich",
+    ]
+    if myokit_module is not None and hasattr(myokit_module, "SUNDIALS_INC") and isinstance(myokit_module.SUNDIALS_INC, list):
+        for d in mpi_dirs:
+            if os.path.isdir(d) and d not in myokit_module.SUNDIALS_INC:
+                myokit_module.SUNDIALS_INC.append(d)
+    for d in mpi_dirs:
+        if os.path.isdir(d):
+            cpath = os.environ.get("C_INCLUDE_PATH", "")
+            if d not in cpath:
+                os.environ["C_INCLUDE_PATH"] = f"{d}:{cpath}" if cpath else d
+            cp = os.environ.get("CPATH", "")
+            if d not in cp:
+                os.environ["CPATH"] = f"{d}:{cp}" if cp else d
+
 
 
 @dataclass
@@ -49,6 +75,8 @@ class EpEngine:
                  warm_state: list[float] | None = None) -> SimulationResult:
         try:
             import myokit  # type: ignore
+
+            _ensure_sundials_includes(myokit)
         except ImportError as exc:
             raise TorsadeTwinError(
                 "E_MODEL_UNAVAILABLE", "Myokit is not installed; the EP engine cannot run.",
