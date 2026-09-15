@@ -1,0 +1,3 @@
+# Runtime artefact checksums — written by scripts/convert_model.py.
+# Format: <sha256>  <filename>
+99f4b927a15e879f4e88fa9cc6ca50c2a702c79f9dd346960927e823a0b6951c  models/ord_cipa_v1.mmt

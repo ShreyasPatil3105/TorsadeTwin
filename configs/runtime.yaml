@@ -1,0 +1,18 @@
+# Runtime settings.
+warm_start: true          # disabled globally if the V-10 equivalence gate fails
+cache_path: cache/torsadetwin.sqlite
+demo_cache_dir: cache/demo
+log_level: INFO
+log_file: logs/backend.log
+# Hard wall-clock budgets (seconds) per endpoint (§23).
+budgets_seconds:
+  drugs: 0.2
+  simulate: 20.0
+  margin: 120.0
+  rescue: 180.0
+  blindspot: 120.0
+  verify: 10.0
+  validation: 0.5
+  report: 30.0
+  scenarios: 0.2
+  health: 0.2

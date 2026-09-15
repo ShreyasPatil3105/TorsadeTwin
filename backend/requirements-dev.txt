@@ -1,0 +1,4 @@
+# Dev/test dependencies
+pytest>=8.0
+pytest-cov>=4.1
+ruff>=0.4

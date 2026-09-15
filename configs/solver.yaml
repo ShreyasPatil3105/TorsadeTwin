@@ -1,0 +1,26 @@
+# Frozen solver profiles (§4.1). standard is the production profile.
+# loose_NEGATIVE_CONTROL must FAIL the verification gates (negative control N-1).
+profiles:
+  standard:
+    rtol: 1.0e-8
+    atol: 1.0e-10
+    # Must be strictly smaller than stimulus pulse duration (0.5 ms) so CVODES
+    # cannot step over the entire stimulus event (see V10 E_NO_UPSTROKE root cause).
+    max_step_ms: 0.1
+    dt_log_ms: 0.1
+  tight:
+    rtol: 1.0e-10
+    atol: 1.0e-12
+    max_step_ms: 0.05
+    dt_log_ms: 0.02
+  loose_NEGATIVE_CONTROL:
+    rtol: 1.0e-4
+    atol: 1.0e-6
+    max_step_ms: 5.0
+    dt_log_ms: 1.0
+  coarse_log:
+    rtol: 1.0e-8
+    atol: 1.0e-10
+    # Same constraint as standard: max step must not exceed stimulus duration.
+    max_step_ms: 0.1
+    dt_log_ms: 1.0
