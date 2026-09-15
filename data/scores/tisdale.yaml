@@ -1,0 +1,48 @@
+# Tisdale risk score (§13.2) — transcribed from Tisdale JE et al.,
+# Circ Cardiovasc Qual Outcomes 2013;6:479-487.
+# doi:10.1161/CIRCOUTCOMES.113.000152
+# Points assigned from published log-OR weighting (Table 4 / validated score):
+#   β≤0.44 → 1 pt; β 0.45–0.94 → 2 pt; β≥0.95 → 3 pt.
+# Bands: low 0–6, moderate 7–10, high ≥11 (C-statistic 0.823).
+# Cross-checked against PMC3788679, MDCalc, and secondary tables (PMC11765673).
+score_id: tisdale_2013
+source_doi: "10.1161/CIRCOUTCOMES.113.000152"
+source_pmid: "23716032"
+verification_status: VERIFIED
+transcribed_by: "autonomous-verification-agent"
+transcribed_on: "2026-09-14"
+items:
+  - id: age_ge_68
+    type: boolean
+    points: 1
+  - id: female_sex
+    type: boolean
+    points: 1
+  - id: loop_diuretic
+    type: boolean
+    points: 1
+  - id: serum_k_le_3_5
+    type: threshold
+    variable: k_o_mM
+    operator: "<="
+    threshold: 3.5
+    points: 2
+  - id: admission_qtc_ge_450
+    type: boolean
+    points: 2
+  - id: acute_mi
+    type: boolean
+    points: 2
+  - id: qt_prolonging_drugs_count
+    type: categorical
+    points_map: {one: 3, two_or_more: 3}
+  - id: sepsis
+    type: boolean
+    points: 3
+  - id: heart_failure
+    type: boolean
+    points: 3
+bands:
+  - {label: low, max_inclusive: 6}
+  - {label: moderate, max_inclusive: 10}
+  - {label: high, max_inclusive: 21}

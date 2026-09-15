@@ -1,0 +1,13 @@
+# Control scenario: drug-free reference for boundary calibration.
+scenario_id: CONTROL
+synthetic: true
+title: "Drug-free control, K_o = 5.4 mM, CL = 2000 ms, endo"
+state:
+  drugs: []
+  k_o_mM: 5.4
+  cl_ms: 2000
+  cell_type: endo
+  solver_profile: standard
+score_inputs:
+  score_id: tisdale_2013
+notes: "Drug-free reference for qNet_ctrl boundary calibration."

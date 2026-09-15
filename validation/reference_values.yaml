@@ -1,0 +1,31 @@
+# Reference numbers (§15.3 / SPEC §14 V-6/V-7).
+
+apd90_control_ms:
+  # Case C — independently reproduced FDA/CiPA reference implementation
+  value: 269.0
+  status: RECORDED
+  recorded_by: "FDA_CiPA_reference_implementation_executed"
+  recorded_on: "2026-09-13"
+  source: "https://github.com/FDA/CiPA"
+  method: "Case C: executed official FDA CiPA control workflow (lsoda) from newordherg_states_CL2000.txt; final-beat APD90=269.0 ms"
+  condition: "CONTROL / no drug, CL=2000 ms, celltype=0 endo"
+  comparison_protocol: "protocol-matched one-beat from model IC (stim offset 50 ms, duration 0.5 ms, Ko=5.4); NOT full prepaced SS APD90"
+
+qnet_control_C_per_F:
+  # Case A literature value from Dutta 2017 Figure 3 CONTROL
+  value: 0.070
+  status: RECORDED
+  recorded_by: "human_from_publication_figure_3"
+  recorded_on: "2026-09-13"
+  source_doi: "10.3389/fphys.2017.00616"
+  method: "Figure 3 CONTROL qNet at CL=2000 ms for optimized IKr-dynamic ORd; NOT 0.109 mexiletine"
+  condition: "CONTROL / drug-free, CL=2000 ms, optimized IKr-dynamic ORd"
+  # Dynamic hERG is intentionally disabled in this product (IKr.D fixed).
+  # Published 0.070 is therefore LITERATURE_REFERENCE_NOT_COMPARABLE for direct ±2% gating.
+  literature_comparable: false
+  literature_label: "LITERATURE_REFERENCE_NOT_COMPARABLE"
+  # Operational baseline: committed control run of the system under test (D-disabled).
+  # Used only when literature_comparable is false. Labeled assumption — not external measurement.
+  operational_value: 0.06743389504722287
+  operational_method: "TorsadeTwin control CVODES n_prepace>=200 C1-C4 converged; Ko=5.4 CL=2000; dynamic hERG disabled; ASSUMPTION: operational reproducibility baseline for SUT"
+  operational_recorded_on: "2026-09-13"

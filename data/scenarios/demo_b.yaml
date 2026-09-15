@@ -1,0 +1,22 @@
+# DEMO-B (§22.2 step 11): infeasible variant — dofetilide 4x, K+ 3.2, both drugs discontinuable: false.
+scenario_id: DEMO-B
+synthetic: true
+title: "Declared synthetic regimen: severe IKr block, low K+, no permitted discontinuation"
+state:
+  drugs:
+    - {drug_id: dofetilide, exposure_multiplier: 4.0}
+    - {drug_id: quinidine, exposure_multiplier: 1.0}
+  k_o_mM: 3.2
+  cl_ms: 2000
+  cell_type: endo
+  solver_profile: standard
+score_inputs:
+  score_id: tisdale_2013
+  age_ge_68: true
+  loop_diuretic: true
+  heart_failure: true
+  acute_mi: false
+  sepsis: false
+  female_sex: UNKNOWN
+  admission_qtc_ge_450: UNKNOWN
+notes: "No real patient data. Constructed so that the finite single-action set cannot restore the target margin."

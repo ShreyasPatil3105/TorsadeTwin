@@ -1,0 +1,62 @@
+schema_version: 1
+cases:
+  - case_id: VC-001-control-apd90
+    experiment: E1
+    description: "Drug-free control, K_o = 5.4 mM, CL = 2000 ms, endo"
+    state:
+      drugs: []
+      k_o_mM: 5.4
+      cl_ms: 2000
+      cell_type: endo
+      solver_profile: standard
+    expected:
+      metric: apd90_ms
+      reference_value: UNKNOWN
+      reference_source_doi: "10.3389/fphys.2017.00616"
+      tolerance: {type: absolute, value: 5.0}
+    pass_criterion: "|computed - reference| <= tolerance"
+    on_fail: "Block VERIFIED status for this config_hash (V-6)"
+  - case_id: VC-002-control-qnet
+    experiment: E1
+    description: "Drug-free control qNet"
+    state:
+      drugs: []
+      k_o_mM: 5.4
+      cl_ms: 2000
+      cell_type: endo
+      solver_profile: standard
+    expected:
+      metric: qnet_C_per_F
+      reference_value: UNKNOWN
+      reference_source_doi: "10.3389/fphys.2017.00616"
+      tolerance: {type: relative, value: 0.02}
+    pass_criterion: "|computed - reference|/reference <= tolerance"
+    on_fail: "Block VERIFIED status for this config_hash (V-7)"
+  - case_id: VC-010-dofetilide-direction
+    experiment: E2
+    description: "Dofetilide 1x free Cmax lowers qNet and prolongs APD90 vs control"
+    state:
+      drugs: [{id: dofetilide, exposure_multiplier: 1.0}]
+      k_o_mM: 5.4
+      cl_ms: 2000
+      cell_type: endo
+      solver_profile: standard
+    expected:
+      metric: relational
+      assertion: "qNet < qNet_control - 3*noise_qNet AND apd90 > apd90_control + 2.0"
+    pass_criterion: "assertion true"
+    on_fail: "V-11 FAIL -> credibility FAILED for this config"
+  - case_id: VC-020-k-directionality
+    experiment: E4
+    description: "Falling K_o reduces qNet, drug-free"
+    state:
+      drugs: []
+      k_o_mM: 5.4
+      cl_ms: 2000
+      cell_type: endo
+      solver_profile: standard
+    expected:
+      metric: relational
+      assertion: "qNet monotonically non-increasing as K_o falls 5.4 -> 3.0 mM"
+    pass_criterion: "assertion true"
+    on_fail: "V-13 FAIL -> credibility FAILED for this config"

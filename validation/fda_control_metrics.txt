@@ -1,0 +1,6 @@
+apd90_ms: 269.000000
+qnet: 85.129728
+source: FDA/CiPA AP_simulation newordherg_qNet.c + states_CL2000.txt
+celltype: 0 (endo)
+CL: 2000
+method: lsoda rtol=1e-6 atol=1e-6 from official steady-state IC

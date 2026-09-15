@@ -1,0 +1,22 @@
+# DEMO-A (§22.1): declared synthetic regimen, two QT-relevant agents, K+ initially normal.
+scenario_id: DEMO-A
+synthetic: true
+title: "Declared synthetic regimen: two QT-relevant agents, K+ initially normal"
+state:
+  drugs:
+    - {drug_id: dofetilide, exposure_multiplier: 1.0}
+    - {drug_id: quinidine, exposure_multiplier: 1.0}
+  k_o_mM: 4.5
+  cl_ms: 2000
+  cell_type: endo
+  solver_profile: standard
+score_inputs:
+  score_id: tisdale_2013
+  age_ge_68: true
+  loop_diuretic: true
+  heart_failure: true
+  acute_mi: false
+  sepsis: false
+  female_sex: UNKNOWN
+  admission_qtc_ge_450: UNKNOWN
+notes: "No real patient data. Exposures are declared multiples of published free Cmax."
