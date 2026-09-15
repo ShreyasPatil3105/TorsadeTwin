@@ -53,7 +53,7 @@ def test_real_non_upstroke_is_unknown_not_a_phi_value():
     assert "E_NO_UPSTROKE" in evaluation.tags
 
 
-def test_unverified_drug_is_refused_from_verified_path():
+def test_verified_drug_margin_and_unknown_drug_refusal():
     client = TestClient(create_app(ROOT))
     response = client.post("/api/v1/margin", json={
         "drugs": [{"drug_id": "dofetilide", "exposure_multiplier": 1.0}],
@@ -61,5 +61,15 @@ def test_unverified_drug_is_refused_from_verified_path():
         "cl_ms": 2000,
         "max_evals": 300,
     })
-    assert response.status_code == 503
-    assert response.json()["error_code"] == "E_PROVENANCE_INCOMPLETE"
+    assert response.status_code == 200
+    assert response.json()["execution_path"] == "VERIFIED_REAL_DATA"
+
+    bad = client.post("/api/v1/margin", json={
+        "drugs": [{"drug_id": "unregistered_compound", "exposure_multiplier": 1.0}],
+        "k_o_mM": 5.4,
+        "cl_ms": 2000,
+        "max_evals": 300,
+    })
+    assert bad.status_code == 400
+    assert bad.json()["error_code"] == "E_UNKNOWN_DRUG"
+
