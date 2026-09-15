@@ -195,14 +195,14 @@ class RescueEngine:
             reason = "DISCONTINUATION_NOT_PERMITTED"
             limiting = "A3 not permitted"
         explanation = (
-            f"The largest permitted single action reaches Phi = {max((e.phi for e in evaluated if e.credibility == 'VERIFIED' and e.phi is not None), default=float('-inf')):.4f} C/F, "
-            f"still below the target {phi_target:.4f} C/F. {limiting}."
+            f"The largest permitted single action reaches Phi = {max((e.phi for e in evaluated if e.credibility == 'VERIFIED' and e.phi is not None), default=float('-inf')):.5f} C/F, "
+            f"still below the target {phi_target:.5f} C/F. {limiting}."
         )
         return InfeasibilityReport(
             reason_code=reason,
             explanation=explanation,
             closest_action={"class": best.action.class_, "param": best.action.param, "phi": best.phi,
-                            "shortfall": round(best_short, 4)},
+                            "shortfall": round(best_short, 6)},
             shortfall_normalised=round(best_short / max(abs(phi_target), 1e-12), 4),
             limiting_bound=limiting,
         )

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
-import threading
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -66,10 +65,6 @@ def create_app(config_root: Path | None = None, registry: DrugRegistry | None = 
 
     app = FastAPI(title="TorsadeTwin", version="0.1.0")
 
-    # Myokit/CVODES simulations are stateful and must not be accessed
-    # concurrently through the shared EP engine.
-    ep_lock = threading.Lock()
-
     @app.exception_handler(TorsadeTwinError)
     async def _tt_error_handler(request: Request, exc: TorsadeTwinError):
         return JSONResponse(status_code=exc.http_status, content=exc.to_dict())
@@ -127,10 +122,7 @@ def create_app(config_root: Path | None = None, registry: DrugRegistry | None = 
         _require_model()
         state = _state(req)
         block = _block_for(state)
-        with ep_lock:
-            result = ep_engine.simulate(
-                state, block.unblocked, return_trace=req.return_trace
-            )
+        result = ep_engine.simulate(state, block.unblocked, return_trace=req.return_trace)
         qnet = result.qnet_C_per_F
         if qnet is None:
             raise TorsadeTwinError("E_NO_STEADY_STATE", "qNet unavailable after simulation.", http_status=422)

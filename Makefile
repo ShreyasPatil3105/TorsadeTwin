@@ -15,7 +15,7 @@ convert-model: ## CellML -> models/ord_cipa_v1.mmt + audits (offline afterwards)
 	$(PYTHON) scripts/convert_model.py
 
 run: ## run the FastAPI backend (single worker, offline)
-	.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8001 --workers 1
+	.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
 
 frontend: ## install + build the React frontend
 	cd frontend && npm install && npm run build

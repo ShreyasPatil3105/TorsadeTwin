@@ -1,7 +1,7 @@
 # Report request/response (§20.8).
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .simulate import SimulateRequest
 
@@ -14,7 +14,9 @@ class ReportRequest(BaseModel):
 
 
 class ReportResponse(BaseModel):
-    json: dict
+    model_config = ConfigDict(populate_by_name=True)
+
+    json_: dict = Field(..., alias="json", serialization_alias="json")
     pdf_path: str | None = None
     result_hash: str
     watermark: str = "NONE"

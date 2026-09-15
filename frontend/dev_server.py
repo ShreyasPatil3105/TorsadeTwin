@@ -2,7 +2,7 @@
 """Zero-dependency local frontend server + API reverse proxy.
 
 Run the existing TorsadeTwin FastAPI backend separately:
-    uvicorn backend.app.main:app --host 127.0.0.1 --port 8001
+    uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 
 Then:
     python frontend/dev_server.py
@@ -17,7 +17,7 @@ from pathlib import Path
 import os
 
 ROOT = Path(__file__).resolve().parent
-BACKEND = os.environ.get("TORSADETWIN_BACKEND", "http://127.0.0.1:8001").rstrip("/")
+BACKEND = os.environ.get("TORSADETWIN_BACKEND", "http://127.0.0.1:8000").rstrip("/")
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
