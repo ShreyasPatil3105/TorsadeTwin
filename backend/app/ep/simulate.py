@@ -103,7 +103,16 @@ class EpEngine:
             # Reuse compiled Simulation across calls on this engine (reset+set_state
             # each time). First call still compiles once.
             if getattr(self, "_compiled_sim", None) is None:
-                sim = myokit.Simulation(model)
+                try:
+                    sim = myokit.Simulation(model)
+                except Exception as exc:
+                    raise TorsadeTwinError(
+                        "E_SOLVER",
+                        "Myokit ODE simulation engine failed to compile.",
+                        detail=str(exc),
+                        remediation="On Windows: Install Microsoft C++ Build Tools (https://visualstudio.microsoft.com/visual-cpp-build-tools/). On Linux/Ubuntu: run 'sudo apt install build-essential libsundials-dev'.",
+                        http_status=500,
+                    ) from exc
                 sim.set_tolerance(self.solver_profile["atol"], self.solver_profile["rtol"])
                 sim.set_max_step_size(self.solver_profile["max_step_ms"])
                 sim.set_constant("extracellular.ko", state.k_o_mM)
@@ -142,7 +151,6 @@ class EpEngine:
 
         sim = make_sim(warm_state)
 
-
         def run_block(simulation, n_beats: int, capture_last_two: bool):
             n_beats = int(n_beats)
             if n_beats < 1:
@@ -151,18 +159,28 @@ class EpEngine:
             if capture_last_two and n_beats < 2:
                 raise TorsadeTwinError("E_NUMERICAL_INSTABILITY", "At least two beats are required to capture convergence state.",
                                         detail=f"n_beats={n_beats}", http_status=422)
-            if capture_last_two:
-                discard = n_beats - 2
-                if discard:
-                    simulation.run(float(discard * cl), log=myokit.LOG_NONE)
-                prev = self._run_contiguous_beat(simulation, cl, dt_log)
-                prev_state = list(simulation.state())
-                cur = self._run_contiguous_beat(simulation, cl, dt_log)
-                cur_state = list(simulation.state())
-                return (self._beat_from_log(prev, prev_state, nai_index, cl),
-                        self._beat_from_log(cur, cur_state, nai_index, cl), cur_state)
-            simulation.run(float(n_beats * cl), log=myokit.LOG_NONE)
-            return None, None, list(simulation.state())
+            try:
+                if capture_last_two:
+                    discard = n_beats - 2
+                    if discard:
+                        simulation.run(float(discard * cl), log=myokit.LOG_NONE)
+                    prev = self._run_contiguous_beat(simulation, cl, dt_log)
+                    prev_state = list(simulation.state())
+                    cur = self._run_contiguous_beat(simulation, cl, dt_log)
+                    cur_state = list(simulation.state())
+                    return (self._beat_from_log(prev, prev_state, nai_index, cl),
+                            self._beat_from_log(cur, cur_state, nai_index, cl), cur_state)
+                simulation.run(float(n_beats * cl), log=myokit.LOG_NONE)
+                return None, None, list(simulation.state())
+            except Exception as exc:
+                if isinstance(exc, TorsadeTwinError):
+                    raise
+                raise TorsadeTwinError(
+                    "E_SOLVER",
+                    "ODE simulation execution error.",
+                    detail=str(exc),
+                    http_status=500,
+                ) from exc
 
         # Continuous pacing within one Simulation: do not reset/recreate CVODES
         # between blocks. Resets discard step-size history and add pure overhead
@@ -202,95 +220,6 @@ class EpEngine:
 
         raise TorsadeTwinError("E_NO_STEADY_STATE", "Steady-state convergence was not reached within the configured beat budget.",
                                detail=f"beats_run={beats_done}", http_status=422)
-
-        sim = make_sim(warm_state)
-
-        # Pace a bounded block continuously. Only the final two beats are logged;
-        # all earlier beats exist solely to evolve the physiological state.
-        def run_block(simulation, n_beats: int, capture_last_two: bool):
-            n_beats = int(n_beats)
-            if n_beats < 1:
-                raise TorsadeTwinError(
-                    "E_NUMERICAL_INSTABILITY", "Invalid pacing block.",
-                    detail=f"n_beats={n_beats}", http_status=422,
-                )
-            if capture_last_two and n_beats < 2:
-                raise TorsadeTwinError(
-                    "E_NUMERICAL_INSTABILITY", "At least two beats are required to capture convergence state.",
-                    detail=f"n_beats={n_beats}", http_status=422,
-                )
-            if capture_last_two:
-                discard = n_beats - 2
-                if discard:
-                    simulation.run(float(discard * cl), log=myokit.LOG_NONE)
-                prev = self._run_contiguous_beat(simulation, cl, dt_log)
-                prev_state = list(simulation.state())
-                cur = self._run_contiguous_beat(simulation, cl, dt_log)
-                cur_state = list(simulation.state())
-                return (
-                    self._beat_from_log(prev, prev_state, nai_index, cl),
-                    self._beat_from_log(cur, cur_state, nai_index, cl),
-                    cur_state,
-                )
-            simulation.run(float(n_beats * cl), log=myokit.LOG_NONE)
-            return None, None, list(simulation.state())
-
-        beats_done = 0
-        # The first 1000 beats are split into solver-safe blocks. The final two
-        # beats of that 1000-beat period are logged for convergence.
-        remaining = n_pre
-        while remaining > 0:
-            block = min(n_extra_block, remaining)
-            if block == remaining and block >= 2:
-                prev, cur, cur_state = run_block(sim, block, True)
-            else:
-                _, _, cur_state = run_block(sim, block, False)
-                prev = cur = None
-            beats_done += block
-            remaining -= block
-            if remaining == 0:
-                if prev is None:
-                    raise TorsadeTwinError(
-                        "E_NUMERICAL_INSTABILITY", "Unable to capture final pre-pacing beats.",
-                        http_status=503,
-                    )
-                conv = self._convergence(prev, cur, state_names, eps_map)
-            # Reinitialize only at block boundaries, preserving the complete
-            # physiological state and restarting CVODES at t=0.
-            if remaining > 0:
-                sim = make_sim(cur_state)
-
-        if conv["converged"]:
-            return self._analysis_beat_from_contiguous(sim, cl, dt_log, beats_done, return_trace, conv, nai_index)
-
-        # The next block starts from the converged physiological state but a
-        # fresh solver clock, keeping every solver instance bounded.
-        sim = make_sim(cur_state)
-
-        # Continue in bounded blocks. Every block transfers state to a fresh
-        # Simulation, but never resets the physiological state.
-        while beats_done < n_pre + n_extra_max:
-            n_block = min(n_extra_block, n_pre + n_extra_max - beats_done)
-            if n_block < 2:
-                # The configured defaults make this path unreachable, but fail
-                # explicitly rather than fabricating a convergence pair.
-                raise TorsadeTwinError(
-                    "E_NUMERICAL_INSTABILITY", "Convergence block must contain at least two beats.",
-                    http_status=422,
-                )
-            prev, cur, cur_state = run_block(sim, n_block, True)
-            beats_done += n_block
-            conv = self._convergence(prev, cur, state_names, eps_map)
-            if conv["converged"]:
-                return self._analysis_beat_from_contiguous(sim, cl, dt_log, beats_done, return_trace, conv, nai_index)
-            sim = make_sim(cur_state)
-
-        raise TorsadeTwinError(
-            "E_NO_STEADY_STATE",
-            "Steady state not reached within the pacing budget.",
-            detail="C1-C4 not satisfied after n_prepace + n_extra_max beats.",
-            remediation="Increase n_prepace or inspect convergence diagnostics.", http_status=422,
-        )
 
     def _run_contiguous_beat(self, sim, cl: float, dt_log: float):
         """Run one logged beat without rewinding Simulation time.
