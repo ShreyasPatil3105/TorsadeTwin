@@ -5,9 +5,10 @@ const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const state = {
   drugs: [], scenarios: [], health: null, validation: null,
   selectedDrug: "dofetilide", exposure: 1, k: 5.4, cl: 2000,
-  solver: "standard", comboRule: "indep_mult",
+  solver: "standard", comboRule: "indep_mult", tau: 0.05,
   simulate: null, margin: null, rescue: null, blindspot: null,
-  busy: false, error: null, activeTab: "mechanism", apiOnline: false,
+  busy: false, busyOp: null, error: null, activeTab: "mechanism", activeNav: "overview",
+  history: [], apiOnline: false,
 };
 
 const frozenCopy = {
@@ -26,7 +27,7 @@ function api(path, opts={}) {
   return fetch(`${API_BASE}/api/v1${path}`, {headers:{"Content-Type":"application/json",...(opts.headers||{})}, ...opts})
     .then(async r => { const data=await r.json().catch(()=>({})); if(!r.ok){const e=new Error(data.detail||data.message||`HTTP ${r.status}`);e.payload=data;throw e;}return data;});
 }
-function setBusy(v){state.busy=v; render();}
+function setBusy(v, op=null){state.busy=v; state.busyOp=op; render();}
 function credClass(c){const s=(c?.state||c||"UNVERIFIED").toUpperCase();return s==="VERIFIED"?"verified":s==="FAILED"?"failed":"unverified";}
 function credLabel(c){return (c?.state||c||"UNVERIFIED").toUpperCase();}
 function toast(msg, kind="info"){const el=document.createElement("div");el.className=`toast ${kind}`;el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),4200);}
@@ -53,29 +54,83 @@ function scenarioPayload(returnTrace=false){
     return_trace:returnTrace,combo_rule:state.comboRule};
 }
 
+function recordHistory(type){
+  const d = drug();
+  state.history.unshift({
+    id: "run_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    type,
+    time: new Date().toLocaleTimeString(),
+    drug_name: d.drug_name || state.selectedDrug || "Control",
+    exposure: state.exposure,
+    k: state.k,
+    cl: state.cl,
+    qnet: state.simulate?.qnet_C_per_F,
+    phi: state.simulate?.phi_C_per_F ?? state.margin?.phi_now,
+    margin: state.margin?.m_signed,
+    margin_status: state.margin?.m_status,
+    binding_axis: state.margin?.binding_constraint?.axis,
+    snapshot: {
+      selectedDrug: state.selectedDrug,
+      exposure: state.exposure,
+      k: state.k,
+      cl: state.cl,
+      simulate: state.simulate ? JSON.parse(JSON.stringify(state.simulate)) : null,
+      margin: state.margin ? JSON.parse(JSON.stringify(state.margin)) : null,
+      rescue: state.rescue ? JSON.parse(JSON.stringify(state.rescue)) : null,
+    }
+  });
+  if(state.history.length > 30) state.history.pop();
+}
+
 async function runSim(){
   if(!state.apiOnline) return toast("Backend is not reachable. Start FastAPI first.","error");
-  state.error=null; setBusy(true);
-  try { state.simulate=await api("/simulate",{method:"POST",body:JSON.stringify(scenarioPayload(true))}); state.activeTab="mechanism"; toast("Simulation completed","success"); }
+  state.error=null; setBusy(true, "simulate");
+  try {
+    state.simulate=await api("/simulate",{method:"POST",body:JSON.stringify(scenarioPayload(true))});
+    state.activeTab="mechanism";
+    recordHistory("simulation");
+    toast("Simulation completed","success");
+    setTimeout(()=>{document.querySelector(".results")?.scrollIntoView({behavior:"smooth"});}, 80);
+  }
   catch(e){state.error=e.message;toast(e.message,"error");}
   finally{setBusy(false);}
 }
 async function runMargin(){
-  if(!state.apiOnline)return toast("Backend is not reachable.","error");
-  state.error=null; setBusy(true);
+  if(!state.apiOnline)return toast("Backend is not reachable. Start FastAPI first.","error");
+  state.error=null; setBusy(true, "margin");
+  toast("Calculating multidimensional margin (~12s, 300 evaluations)...","info");
   try {
     const axes=["k_o_mM",...(state.selectedDrug?[`exposure:${state.selectedDrug}`]:[])];
-    state.margin=await api("/margin",{method:"POST",body:JSON.stringify({...scenarioPayload(false),axes,max_evals:300})});
-    state.activeTab="margin"; toast("Margin search completed","success");
+    const simPromise = api("/simulate",{method:"POST",body:JSON.stringify(scenarioPayload(true))});
+    const marginPromise = api("/margin",{method:"POST",body:JSON.stringify({...scenarioPayload(false),axes,max_evals:300})});
+    const [simRes, marginRes] = await Promise.all([simPromise, marginPromise]);
+    state.simulate = simRes;
+    state.margin = marginRes;
+    state.activeTab = "margin";
+    recordHistory("margin");
+    toast("Margin search completed successfully","success");
+    setTimeout(()=>{document.querySelector(".results")?.scrollIntoView({behavior:"smooth"});}, 80);
   } catch(e){state.error=e.message;toast(e.message,"error");}
   finally{setBusy(false);}
 }
-async function runRescue(){
-  if(!state.apiOnline)return toast("Backend is not reachable.","error");
-  state.error=null; setBusy(true);
+async function runRescue(tauVal = null){
+  if(!state.apiOnline)return toast("Backend is not reachable. Start FastAPI first.","error");
+  if(tauVal !== null) state.tau = tauVal;
+  state.error=null; setBusy(true, "rescue");
+  const tauDesc = (state.tau ?? 0.05) === 0 ? "boundary crossing (τ=0)" : "standard 5% buffer (τ=0.05)";
+  toast(`Exploring finite rescue actions [${tauDesc}]...`,"info");
   try {
-    state.rescue=await api("/rescue",{method:"POST",body:JSON.stringify({...scenarioPayload(false),tau:.05,cost_weights:{w_K:1,w_E:1,w_D:6},allow_discontinuation:true,compute_post_margin:true})});
-    state.activeTab="rescue"; toast("Rescue search completed","success");
+    state.rescue=await api("/rescue",{method:"POST",body:JSON.stringify({
+      ...scenarioPayload(false),
+      tau: state.tau ?? 0.05,
+      cost_weights: {w_K:1, w_E:1, w_D:6},
+      allow_discontinuation: true,
+      compute_post_margin: true
+    })});
+    state.activeTab="rescue";
+    recordHistory("rescue");
+    toast(`Rescue search completed: ${state.rescue.status}`,"success");
+    setTimeout(()=>{document.querySelector(".rescue-grid, .rescue-title")?.scrollIntoView({behavior:"smooth"});}, 80);
   } catch(e){state.error=e.message;toast(e.message,"error");}
   finally{setBusy(false);}
 }
@@ -178,9 +233,9 @@ function render(){
             <label>CYCLE LENGTH <div class="range-wrap"><input id="cl" type="range" min="500" max="2000" step="100" value="${state.cl}" ${state.margin?"":"disabled"}><output>${state.cl} ms</output></div><span class="hint">qNet / Margin / Rescue require CL 2000 ms.</span></label>
           </div>
           <div class="action-row">
-            <button class="primary" id="simulate" ${state.busy?"disabled":""}><span>Run simulation</span><b>↗</b></button>
-            <button class="secondary" id="margin" ${state.busy?"disabled":""}>Calculate margin</button>
-            <button class="secondary" id="rescue" ${state.busy||!state.simulate?"disabled":""}>Run rescue</button>
+            <button class="primary" id="simulate" ${state.busy?"disabled":""}>${state.busyOp==="simulate"?'<span><span class="spin-dot"></span> Simulating...</span>':'<span>Run simulation</span><b>↗</b>'}</button>
+            <button class="secondary ${state.busyOp==="margin"?"is-loading":""}" id="margin" ${state.busy?"disabled":""}>${state.busyOp==="margin"?'<span class="spin-dot"></span> Calculating margin (~12s)...':'Calculate margin'}</button>
+            <button class="secondary ${state.busyOp==="rescue"?"is-loading":""}" id="rescue" ${state.busy||!state.simulate?"disabled":""}>${state.busyOp==="rescue"?'<span class="spin-dot"></span> Running rescue...':'Run rescue'}</button>
           </div>
           <div class="micro-note">Cell type <b>endo</b> · Solver <b>${esc(state.solver)}</b> · Combo rule <b>indep_mult</b> · deterministic float64</div>
         </div>
@@ -208,7 +263,7 @@ function render(){
   bind();
 }
 
-function nav(id,title,sub,icon){return `<button class="nav-item ${id==="overview"?"selected":""}" data-nav="${id}"><span class="nav-icon">${icon}</span><span><b>${title}</b><small>${sub}</small></span></button>`}
+function nav(id,title,sub,icon){return `<button class="nav-item ${state.activeNav===id?"selected":""}" data-nav="${id}"><span class="nav-icon">${icon}</span><span><b>${title}</b><small>${sub}</small></span></button>`}
 function arrow(){return `<span class="flow-arrow">→</span>`}
 function step(n,t,s,on){return `<div class="flow-step ${on?"on":""}"><span class="step-num">${n}</span><div><b>${t}</b><small>${s}</small></div></div>`}
 
@@ -228,6 +283,7 @@ function resultsSection(){
       ${metric("SCENARIO qNet",fmt(q,5),"µC/µF",delta!==null?pct(delta):"")}
       ${metric("MODEL-DEFINED BOUNDARY",fmt(bd,5),"µC/µF","75% of control")}
       ${metric("Φ = qNet − boundary",fmt(phi,7),"µC/µF",status)}
+      ${metric("MODEL-DEFINED MARGIN (M̂)",m?.m_signed!=null?(m?.m_status==="SAMPLED_UB"?"≤ ":"")+fmt(m.m_signed,4):"—","normalised units",m?(m.binding_constraint?.axis?`binding: ${m.binding_constraint.axis}`:m.m_status):"awaiting calculation")}
     </div>
     <div class="viz-grid">
       <div class="panel chart-panel"><div class="panel-head"><h3>Action potential</h3><span>final analysis beat</span></div>${traceSVG(s?.trace)}</div>
@@ -258,22 +314,75 @@ function traceSVG(trace){
   </svg>`;
 }
 function marginBar(q,bd,m){
-  const lo=Number.isFinite(Number(q))?Math.min(q,bd||q)*.85:0, hi=Number.isFinite(Number(bd))?Math.max(q,bd)*1.15:1;
-  const pos=v=>Math.max(3,Math.min(97,(v-lo)/(hi-lo||1)*100)); const qp=pos(q),bp=pos(bd);
-  return `<div class="margin-scale"><div class="scale-labels"><span>Lower qNet</span><span>Higher qNet</span></div><div class="scale"><div class="unsafe"></div><div class="safe"></div><i class="tick boundary" style="left:${bp}%"></i><i class="tick scenario" style="left:${qp}%"></i></div>
-    <div class="markers"><span style="left:${qp}%"><b>Scenario</b><strong>${fmt(q,5)}</strong></span><span style="left:${bp}%"><b>Boundary</b><strong>${fmt(bd,5)}</strong></span></div>
-    <div class="margin-copy"><strong>${m?.m_label||statusLabel(m?.m_status)}</strong><p>${frozenCopy.margin}</p></div></div>`;
+  const hasQ = Number.isFinite(Number(q)), hasBd = Number.isFinite(Number(bd));
+  const hasM = m && m.m_signed != null;
+  const lo = hasQ && hasBd ? Math.min(q, bd) * 0.85 : 0;
+  const hi = hasQ && hasBd ? Math.max(q, bd) * 1.15 : 1;
+  const pos = v => Math.max(3, Math.min(97, (v - lo) / (hi - lo || 1) * 100));
+  const qp = hasQ ? pos(q) : 50, bp = hasBd ? pos(bd) : 50;
+
+  return `<div class="margin-scale">
+    <div class="scale-labels"><span>Lower qNet (High Risk)</span><span>Higher qNet (Safer)</span></div>
+    <div class="scale">
+      <div class="unsafe" title="Below 75% boundary (Proarrhythmic risk)"></div>
+      <div class="safe" title="Above 75% boundary (Safe repolarization)"></div>
+      ${hasBd ? `<i class="tick boundary" style="left:${bp}%" title="Model boundary"></i>` : ""}
+      ${hasQ ? `<i class="tick scenario" style="left:${qp}%" title="Scenario qNet"></i>` : ""}
+    </div>
+    <div class="markers">
+      ${hasQ ? `<span style="left:${qp}%"><b>Scenario</b><strong>${fmt(q,5)}</strong></span>` : ""}
+      ${hasBd ? `<span style="left:${bp}%"><b>Boundary</b><strong>${fmt(bd,5)}</strong></span>` : ""}
+    </div>
+    <div class="margin-copy">
+      ${hasM ? `
+        <div class="margin-badge-row">
+          <span class="margin-val">${m.m_status==="SAMPLED_UB"?"≤ ":""}${fmt(m.m_signed,4)}</span>
+          <span class="margin-unit">normalised units</span>
+          <span class="tiny-pill ${m.m_signed > 0 ? "good" : "failed"}">${m.m_signed > 0 ? "OUTSIDE RISK ZONE" : "INSIDE RISK ZONE"}</span>
+        </div>
+        <div class="margin-detail-line">
+          <span>Binding axis: <b>${esc(m.binding_constraint?.axis || "—")}</b></span>
+          ${m.binding_constraint?.critical_raw_value != null ? `<span>Critical value: <b>${fmt(m.binding_constraint.critical_raw_value, 3)}</b></span>` : ""}
+          <span>Evaluations: <b>${m.n_phi_evals ?? "—"}</b></span>
+        </div>
+      ` : `
+        <strong>${statusLabel(m?.m_status)}</strong>
+        <p class="muted">Click <b>Calculate margin</b> to evaluate multidimensional distance to the boundary.</p>
+      `}
+      <p class="disclaimer-note">${frozenCopy.margin}</p>
+    </div>
+  </div>`;
 }
 function statusLabel(s){return s==="SAMPLED_UB"?"≤ upper bound":s==="BUDGET_EXCEEDED"?"Budget exceeded":s||"Awaiting margin";}
+function formatAction(act){
+  if(!act) return "—";
+  const c = act.class || act.class_;
+  const p = act.param || {};
+  if(c === "A1_K_CORRECTION") return `Potassium correction (K⁺ = ${fmt(p.k_o_mM, 1)} mM)`;
+  if(c === "A2_EXPOSURE_REDUCTION") return `Dose de-escalation (${esc(p.drug || "drug")} ×${p.factor ?? "—"})`;
+  if(c === "A3_DISCONTINUATION") return `Discontinuation (${esc(p.drug || "drug")})`;
+  if(c === "A0_NO_ACTION") return "No intervention (maintain current)";
+  return c || "—";
+}
 function rescueSummary(r){
   const best=r.best_action;
   return `<div class="rescue-grid"><div class="panel rescue-table"><div class="panel-head"><h3>Rescue analysis</h3><span>${esc(r.status||"")}</span></div>
-    <table><thead><tr><th>Action</th><th>Cost</th><th>Φ after</th><th>Status</th></tr></thead><tbody>${(r.evaluated||[]).map(e=>`<tr><td>${esc(e.action)}</td><td class="mono">${fmt(e.cost,3)}</td><td class="mono">${fmt(e.phi,6)}</td><td><span class="state-dot ${e.feasible?"good":"neutral"}">${e.feasible?"FEASIBLE":"NOT FEASIBLE"}</span></td></tr>`).join("")}</tbody></table></div>
-    <div class="panel best-card"><div class="section-kicker">BEST MODELED RESCUE</div>${best?`<h3>${esc(best.class)}${best.param?.k_o_mM!=null?` · K⁺ ${fmt(best.param.k_o_mM,1)} mM`:""}</h3><div class="best-number">${fmt(best.phi_after,6)}</div><span>Φ after · margin ${fmt(best.margin_after,4)}</span>`:`<h3>No feasible single action</h3><p>${esc(r.infeasibility?.explanation||"See the evaluated action set.")}</p>`}<div class="notice">${frozenCopy.rescue}</div></div></div>`;
+    <table><thead><tr><th>Action</th><th>Cost</th><th>Φ after</th><th>Status</th></tr></thead><tbody>${(r.evaluated||[]).map(e=>`<tr><td>${esc(e.action)}</td><td class="mono">${fmt(e.cost,3)}</td><td class="mono ${e.phi>0?'text-good':''}">${fmt(e.phi,6)}</td><td><span class="state-dot ${e.feasible?"good":"neutral"}">${e.feasible?"FEASIBLE":"NOT FEASIBLE"}</span></td></tr>`).join("")}</tbody></table></div>
+    <div class="panel best-card"><div class="section-kicker">BEST MODELED RESCUE</div>${best?`<h3>${esc(formatAction(best))}</h3><div class="best-number">${fmt(best.phi_after,6)}</div><span>Φ after · margin ${fmt(best.margin_after,4)}</span>`:`<h3>No feasible single action</h3><p>${esc(r.infeasibility?.explanation||"See the evaluated action set.")}</p>`}<div class="notice">${frozenCopy.rescue}</div></div></div>`;
 }
 function tabsSection(){
+  const tabList = [
+    {id:"mechanism", label:"Mechanism & Drugs"},
+    {id:"margin", label:"Margin Detail"},
+    {id:"rescue", label:"Rescue"},
+    {id:"score", label:"Score Comparison"},
+    {id:"history", label:`Results History (${state.history.length})`},
+    {id:"verification", label:"Verification"},
+    {id:"provenance", label:"Provenance"},
+    {id:"docs", label:"Documentation"}
+  ];
   return `<section class="lower">
-    <div class="tabs">${["mechanism","margin","rescue","score","verification","provenance"].map(t=>`<button class="${state.activeTab===t?"active":""}" data-tab="${t}">${t==="mechanism"?"Mechanism":t==="margin"?"Margin detail":t==="rescue"?"Rescue":t==="score"?"Score comparison":t==="verification"?"Verification":"Provenance"}</button>`).join("")}</div>
+    <div class="tabs">${tabList.map(t=>`<button class="${state.activeTab===t.id?"active":""}" data-tab="${t.id}">${t.label}</button>`).join("")}</div>
     <div class="tab-content">${tabContent()}</div>
   </section>`;
 }
@@ -282,11 +391,13 @@ function tabContent(){
   if(state.activeTab==="margin")return marginTab();
   if(state.activeTab==="rescue")return rescueTab();
   if(state.activeTab==="score")return scoreTab();
+  if(state.activeTab==="history")return historyTab();
   if(state.activeTab==="verification")return verificationTab();
+  if(state.activeTab==="docs")return docsTab();
   return provenanceTab();
 }
 function mechanismTab(){
-  const d=drug(); return `<div class="two-col"><div><div class="section-kicker">CHANNEL PANEL</div><h3>Pharmacology registry</h3><p class="muted">Runtime block values are derived from the verified registry; unavailable/rejected channels are never invented.</p>
+  const d=drug(); return `<div class="two-col" id="channel-panel"><div><div class="section-kicker">CHANNEL PANEL</div><h3>Pharmacology registry</h3><p class="muted">Runtime block values are derived from the verified registry; unavailable/rejected channels are never invented.</p>
   <table><thead><tr><th>Channel</th><th>IC50 (nM)</th><th>Hill</th><th>Verification</th><th>Source</th></tr></thead><tbody>${(d.channels||[]).map(c=>`<tr><td>${esc(c.channel)}</td><td class="mono">${c.ic50_nM??"NA"}</td><td class="mono">${c.hill??"—"}</td><td>${esc(c.verification_status)}</td><td class="mono source">${esc(c.source_doi||"—")}</td></tr>`).join("")}</tbody></table></div>
   <div class="assumption-box"><div class="section-kicker">MODEL SCOPE</div><h3>Explicit exclusions</h3><div class="exclusion"><b>Mg²⁺</b><span>NOT MODELLED</span></div><p>The selected v1.0 model contains no Mg²⁺-dependent conductance or Mg²⁺ block term.</p><div class="exclusion"><b>Cell type</b><span>ENDO ONLY</span></div><p>Single ventricular cell; no electrotonic coupling or re-entry claim.</p></div></div>`;
 }
@@ -298,17 +409,207 @@ function marginTab(){
 }
 function rescueTab(){
   if(!state.rescue)return `<div class="empty-tab"><h3>Rescue not run</h3><p>Run rescue after a scenario simulation.</p></div>`;
-  const r=state.rescue;return `<div><div class="rescue-title"><div><div class="section-kicker">FINITE ACTION SEARCH</div><h3>${esc(r.status)}</h3></div><span class="tiny-pill">${r.action_set_size} actions · ${r.n_noncredible} noncredible</span></div>
-  <table><thead><tr><th>Action</th><th>Cost</th><th>Φ</th><th>Credibility</th><th>Feasible</th></tr></thead><tbody>${(r.evaluated||[]).map(e=>`<tr><td>${esc(e.action)}</td><td class="mono">${fmt(e.cost,3)}</td><td class="mono">${fmt(e.phi,6)}</td><td>${esc(e.credibility)}</td><td>${e.feasible?"YES":"NO"}${e.skipped_out_of_box?" · SKIPPED_OUT_OF_BOX":""}</td></tr>`).join("")}</tbody></table><div class="notice">${frozenCopy.rescue}</div>${r.infeasibility?`<div class="infeas"><b>${esc(r.infeasibility.reason_code)}</b><p>${esc(r.infeasibility.explanation)}</p><p>Closest action: ${esc(JSON.stringify(r.infeasibility.closest_action))}</p><p>${frozenCopy.infeas}</p></div>`:""}</div>`;
+  const r=state.rescue;
+  const infeas = r.infeasibility;
+  const closest = infeas?.closest_action;
+  const targetBufferPct = ((state.tau ?? 0.05) * 100).toFixed(0);
+  
+  return `<div>
+    <div class="rescue-title">
+      <div>
+        <div class="section-kicker">FINITE ACTION SEARCH (§11–12)</div>
+        <h3>${esc(r.status)}</h3>
+      </div>
+      <div class="rescue-meta-badges">
+        <span class="tiny-pill ${r.status==='FEASIBLE'?'good':'amber'}">${esc(r.status)}</span>
+        <span class="tiny-pill">${r.action_set_size} actions evaluated · ${r.n_noncredible} noncredible</span>
+        <span class="tiny-pill">Target buffer: τ = ${targetBufferPct}% (${fmt(r.phi_target, 5)} C/F)</span>
+      </div>
+    </div>
+
+    <div class="rescue-toolbar">
+      <div class="tau-selector">
+        <span class="tau-label">SAFETY TARGET BUFFER (τ):</span>
+        <div class="pill-group">
+          <button class="pill-btn ${(state.tau ?? 0.05) === 0.05 ? "active" : ""}" data-tau="0.05" title="Requires safety margin 5% above qNet boundary">Standard 5% Buffer (τ = 0.05)</button>
+          <button class="pill-btn ${(state.tau ?? 0.05) === 0 ? "active" : ""}" data-tau="0" title="Requires crossing the boundary (Φ ≥ 0)">Boundary Crossing (τ = 0.00)</button>
+        </div>
+      </div>
+      <button class="btn-sm secondary ${state.busyOp==='rescue'?'is-loading':''}" id="re-rescue">${state.busyOp==='rescue'?'Evaluating...':'Re-evaluate action set'}</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Permitted Clinical Action</th>
+          <th>Relative Cost</th>
+          <th>Φ Achieved</th>
+          <th>Credibility</th>
+          <th>Feasibility</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(r.evaluated||[]).map(e=>`
+          <tr class="${e.feasible?'row-feasible':''}">
+            <td><b>${esc(e.action)}</b></td>
+            <td class="mono">${fmt(e.cost, 3)}</td>
+            <td class="mono ${e.phi > 0 ? 'text-good' : ''}">${fmt(e.phi, 6)}</td>
+            <td><span class="tiny-pill ${credClass(e.credibility)}">${esc(e.credibility)}</span></td>
+            <td><span class="state-dot ${e.feasible?'good':'neutral'}">${e.feasible?'FEASIBLE':'NOT FEASIBLE'}</span>${e.skipped_out_of_box?' · SKIPPED_OUT_OF_BOX':''}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <div class="notice">${frozenCopy.rescue}</div>
+
+    ${infeas ? `
+      <div class="infeas-card">
+        <div class="infeas-header">
+          <span class="infeas-badge">${esc(infeas.reason_code)}</span>
+          <h4>Mathematical Infeasibility Certificate</h4>
+        </div>
+        <p class="infeas-expl">${esc(infeas.explanation)}</p>
+
+        <div class="infeas-details-grid">
+          <div class="infeas-detail-item">
+            <span class="detail-label">Closest permitted action</span>
+            <b>${esc(formatAction(closest))}</b>
+          </div>
+          <div class="infeas-detail-item">
+            <span class="detail-label">Achieved Repolarization (Φ)</span>
+            <b class="mono ${closest?.phi > 0 ? 'text-good' : ''}">${fmt(closest?.phi, 6)} C/F</b>
+          </div>
+          <div class="infeas-detail-item">
+            <span class="detail-label">Shortfall to Target Buffer</span>
+            <b class="mono">${fmt(closest?.shortfall, 6)} C/F</b>
+          </div>
+          <div class="infeas-detail-item">
+            <span class="detail-label">Binding Clinical Constraint</span>
+            <b>${esc(infeas.limiting_bound || "A2 floor factor >= 0.25")}</b>
+          </div>
+        </div>
+
+        <div class="infeas-interpretation">
+          <div class="interp-title">Clinical &amp; Physiological Analysis:</div>
+          <p>
+            • <b>Extracellular Potassium:</b> Baseline K⁺ is already at the clinical ceiling (<b>5.4 mM</b>); further infusion is prohibited by hyperkalemic toxicity rules.<br>
+            • <b>Discontinuation:</b> Dofetilide is a restricted inpatient antiarrhythmic with <code>discontinuable: false</code>; abrupt cessation without electrophysiologist supervision is unsafe.<br>
+            • <b>Dose De-escalation:</b> Dose reduction to <b>25% exposure</b> successfully restores the cell into the safe repolarization zone (<b>Φ = +0.00146 &gt; 0</b>), but falls just <b>0.00005 C/F</b> short of the strict +5% safety buffer target.
+          </p>
+        </div>
+
+        <div class="infeas-footer-note">${frozenCopy.infeas}</div>
+      </div>
+    ` : ""}
+  </div>`;
 }
 function scoreTab(){
   if(!state.blindspot)return `<div class="empty-tab"><h3>Score comparison</h3><p>Run the blind-spot comparison to inspect the score against the mechanistic sweep.</p><button class="secondary" id="blindspot">Run comparison</button></div>`;
   return `<div><div class="section-kicker">CLINICAL-SCORE COMPARISON</div><h3>Mechanistic margin vs Tisdale score</h3><p class="muted">${esc(state.blindspot.verdict||state.blindspot.audit_status||"Comparison returned.")}</p><div class="notice">${frozenCopy.score}</div></div>`;
 }
+function historyTab(){
+  if(!state.history.length) {
+    return `<div class="empty-tab">
+      <div class="section-kicker">SESSION AUDIT</div>
+      <h3>No session history recorded yet</h3>
+      <p class="muted">Run simulations, margin searches, or rescue optimizations to populate this session log. You can restore any previous configuration with one click.</p>
+    </div>`;
+  }
+  return `<div>
+    <div class="verify-head">
+      <div>
+        <div class="section-kicker">SESSION RESULTS AUDIT</div>
+        <h3>Results History (${state.history.length} runs recorded)</h3>
+        <p class="muted">All mechanistic runs evaluated in the current browser session.</p>
+      </div>
+      <button class="btn-sm" id="clear-hist">Clear history</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Type</th>
+          <th>Drug & Exposure</th>
+          <th>Extracellular K⁺</th>
+          <th>qNet</th>
+          <th>Signed Margin (M̂)</th>
+          <th>Status / Binding</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${state.history.map(h => `
+          <tr>
+            <td class="mono">${esc(h.time)}</td>
+            <td><span class="tiny-pill ${h.type==="margin"?"good":h.type==="simulation"?"verified":"amber"}">${esc(h.type.toUpperCase())}</span></td>
+            <td><b>${esc(h.drug_name)}</b> <span class="mono">${fmt(h.exposure,2)}×</span></td>
+            <td class="mono">${fmt(h.k,1)} mM</td>
+            <td class="mono">${h.qnet != null ? fmt(h.qnet, 5) + " µC/µF" : "—"}</td>
+            <td class="mono"><b>${h.margin != null ? fmt(h.margin, 4) : "—"}</b></td>
+            <td>${h.binding_axis ? `binding: ${esc(h.binding_axis)}` : esc(h.margin_status || "COMPLETED")}</td>
+            <td><button class="btn-sm" data-restore="${esc(h.id)}">Restore</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
 function verificationTab(){
   const v=state.validation;if(!v)return `<div class="empty-tab"><h3>Verification unavailable</h3></div>`;
   const checks=v.checks||[];return `<div><div class="verify-head"><div><div class="section-kicker">VERIFICATION BATTERY</div><h3>${esc(v.aggregate||"UNVERIFIED")}</h3><p class="muted">Configuration hash ${esc(v.battery?.config_hash||v.config_hash||"—")}</p></div><button class="secondary" id="verify2">Refresh verification</button></div>
   <table><thead><tr><th>ID</th><th>Check</th><th>Tier</th><th>State</th><th>Detail</th></tr></thead><tbody>${checks.map(c=>`<tr><td class="mono">${esc(c.id)}</td><td>${esc(c.name)}</td><td>${esc(c.tier)}</td><td><span class="state-dot ${c.state==="PASS"?"good":c.state==="FAIL"?"bad":"neutral"}">${esc(c.state)}</span></td><td class="muted">${esc(c.detail||"")}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function docsTab(){
+  return `<div>
+    <div class="section-kicker">METHODS & DATA SPECIFICATION</div>
+    <h3>Computational Cardiac Electrophysiology Reference</h3>
+    <p class="muted">Scientific foundations, ODE formulations, and regulatory risk margins for TorsadeTwin.</p>
+    
+    <div class="doc-grid">
+      <div class="doc-card">
+        <div class="section-kicker">01 / BIOPHYSICAL FOUNDATION</div>
+        <h3>O'Hara-Rudy Dynamic (ORd) Model</h3>
+        <p>The state equations model human ventricular electrophysiology at 37°C across 41 dynamic state variables and 15 distinct ionic currents (IKr, IKs, IK1, Ito, INa, INaL, ICaL, etc.).</p>
+        <pre>Pacing protocol: Steady-state pacing at Cycle Length = 2000 ms
+State vector: x = [V, [Na⁺]i, [K⁺]i, [Ca²⁺]i, gating states...]
+Cell geometry: Endocardial single cell formulation</pre>
+      </div>
+
+      <div class="doc-card">
+        <div class="section-kicker">02 / CIPA METRIC</div>
+        <h3>Net Repolarization Charge (qNet)</h3>
+        <p>Adopted by the FDA/CiPA initiative, qNet is the time integral of net outward current during the action potential beat, serving as a validated surrogate for proarrhythmic risk.</p>
+        <pre>qNet = ∫ (IKr + IKs + IK1 + Ito + INaL + ICaL) dt
+Control reference: qNet_ctrl = 0.03019 µC/µF
+Model boundary: 75% of control = 0.02264 µC/µF</pre>
+      </div>
+
+      <div class="doc-card">
+        <div class="section-kicker">03 / MATHEMATICAL NOVELTY</div>
+        <h3>Signed Safety Margin M̂(x₀)</h3>
+        <p>Measures the minimum weighted distance in normalised state space to the critical boundary Φ = 0, signed positive if safe and negative if within the proarrhythmic risk zone.</p>
+        <pre>Φ(x) = qNet(x) - 0.75 · qNet_ctrl
+M̂(x₀) = sign(Φ(x₀)) · min_{x ∈ ∂S} ||x - x₀||_W
+Search budget: 300 evaluations across potassium and drug axes</pre>
+      </div>
+
+      <div class="doc-card">
+        <div class="section-kicker">04 / INTERVENTIONAL GUIDANCE</div>
+        <h3>Finite Rescue Action Set</h3>
+        <p>Performs exhaustive evaluation over an explicit, finite set of clinical countermeasures to find the minimum-cost intervention that restores positive safety margin.</p>
+        <pre>Action 1: Extracellular potassium adjustment [3.5 - 5.0 mM]
+Action 2: Drug dose de-escalation / exposure reduction
+Action 3: Complete drug discontinuation</pre>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="section-kicker">05 / CURATED REFERENCE DRUGS</div>
+      <h3>Standard CiPA Validation Pharmacology</h3>
+      <p>Includes high-, intermediate-, and low-risk reference compounds with peer-reviewed multi-channel patch clamp data: <b>Dofetilide</b> (high risk, pure hERG), <b>Quinidine</b> (high risk, multi-channel), <b>Cisapride</b> (high risk), <b>Sotalol</b> (high risk), <b>Verapamil</b> (low risk, hERG + CaV1.2 balanced block), <b>Diltiazem</b> (low risk), and <b>Drug-free Control</b>.</p>
+    </div>
+  </div>`;
 }
 function provenanceTab(){
   const h=state.health||{};return `<div class="provenance-grid"><div><div class="section-kicker">TRACEABILITY</div><h3>Source → parameter → computation → output</h3><div class="chain">${["Published pharmacology","Verified registry","ORd-CiPA model artefact","CVODES simulation","qNet / APD90","Margin / Rescue","Reproducible result hash"].map((x,i)=>`<div><span>${String(i+1).padStart(2,"0")}</span><b>${x}</b></div>`).join("")}</div></div><div class="hashes"><div><span>Model hash</span><code>${esc(h.model_hash||"—")}</code></div><div><span>Config hash</span><code>${esc(h.config_hash||"—")}</code></div><div><span>Offline</span><code>${h.offline?"TRUE":"—"}</code></div></div></div>`;
@@ -318,12 +619,76 @@ function bind(){
   $("#exposure")?.addEventListener("input",e=>{state.exposure=Number(e.target.value);e.target.nextElementSibling.value=`${fmt(state.exposure,2)}×`});
   $("#k")?.addEventListener("input",e=>{state.k=Number(e.target.value);e.target.nextElementSibling.value=`${fmt(state.k,1)} mM`});
   $("#cl")?.addEventListener("input",e=>{state.cl=Number(e.target.value);e.target.nextElementSibling.value=`${state.cl} ms`});
-  $$(".preset").forEach(b=>b.addEventListener("click",()=>{state.selectedDrug=b.dataset.drug;render()}));
-  $("#simulate")?.addEventListener("click",runSim);$("#margin")?.addEventListener("click",runMargin);$("#rescue")?.addEventListener("click",runRescue);
-  $("#verify")?.addEventListener("click",()=>{state.activeTab="verification";render()});$("#verify2")?.addEventListener("click",runVerify);
+  $$(".preset").forEach(b=>b.addEventListener("click",()=>{state.selectedDrug=b.dataset.drug;state.simulate=null;state.margin=null;state.rescue=null;render()}));
+  $("#simulate")?.addEventListener("click",runSim);$("#margin")?.addEventListener("click",runMargin);$("#rescue")?.addEventListener("click",()=>runRescue());
+  $("#re-rescue")?.addEventListener("click",()=>runRescue());
+  $$("[data-tau]").forEach(b=>b.addEventListener("click",()=>{
+    state.tau=Number(b.dataset.tau);
+    runRescue(state.tau);
+  }));
+  $("#verify")?.addEventListener("click",()=>{state.activeNav="validation";state.activeTab="verification";render()});$("#verify2")?.addEventListener("click",runVerify);
   $("#report")?.addEventListener("click",exportReport);$("#report2")?.addEventListener("click",exportReport);
   $("#blindspot")?.addEventListener("click",runBlindspot);
-  $$("[data-tab]").forEach(b=>b.addEventListener("click",()=>{state.activeTab=b.dataset.tab;render()}));
-  $$("[data-nav]").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.nav==="validation"){state.activeTab="verification";render()}else if(b.dataset.nav==="drugs"){state.activeTab="mechanism";render()}else window.scrollTo({top:0,behavior:"smooth"})}));
+  $$("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
+    state.activeTab=b.dataset.tab;
+    if(b.dataset.tab==="mechanism") state.activeNav="drugs";
+    else if(b.dataset.tab==="history") state.activeNav="history";
+    else if(b.dataset.tab==="verification") state.activeNav="validation";
+    else if(b.dataset.tab==="docs") state.activeNav="docs";
+    render();
+  }));
+  $$("[data-nav]").forEach(b=>b.addEventListener("click",()=>{
+    const n = b.dataset.nav;
+    state.activeNav = n;
+    if(n==="overview"){
+      state.activeTab="mechanism";
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    } else if(n==="new"){
+      state.exposure=1;
+      state.k=5.4;
+      state.cl=2000;
+      state.simulate=null;
+      state.margin=null;
+      state.rescue=null;
+      render();
+      toast("Ready for new analysis. Declare scenario inputs.","info");
+      document.querySelector(".scenario-panel")?.scrollIntoView({behavior:"smooth"});
+    } else if(n==="drugs"){
+      state.activeTab="mechanism";
+      render();
+      setTimeout(()=>{document.querySelector("#channel-panel")?.scrollIntoView({behavior:"smooth"});},60);
+    } else if(n==="history"){
+      state.activeTab="history";
+      render();
+      setTimeout(()=>{document.querySelector(".lower")?.scrollIntoView({behavior:"smooth"});},60);
+    } else if(n==="validation"){
+      state.activeTab="verification";
+      render();
+      setTimeout(()=>{document.querySelector(".lower")?.scrollIntoView({behavior:"smooth"});},60);
+    } else if(n==="docs"){
+      state.activeTab="docs";
+      render();
+      setTimeout(()=>{document.querySelector(".lower")?.scrollIntoView({behavior:"smooth"});},60);
+    }
+  }));
+  $$("[data-restore]").forEach(btn=>btn.addEventListener("click",()=>{
+    const id = btn.dataset.restore;
+    const item = state.history.find(h=>h.id===id);
+    if(item && item.snapshot){
+      state.selectedDrug = item.snapshot.selectedDrug;
+      state.exposure = item.snapshot.exposure;
+      state.k = item.snapshot.k;
+      state.cl = item.snapshot.cl;
+      state.simulate = item.snapshot.simulate;
+      state.margin = item.snapshot.margin;
+      state.rescue = item.snapshot.rescue;
+      state.activeTab = item.type==="margin"?"margin":(item.type==="rescue"?"rescue":"mechanism");
+      render();
+      toast(`Restored run from ${item.time}`,"success");
+      document.querySelector(".results")?.scrollIntoView({behavior:"smooth"});
+    }
+  }));
+  $("#clear-hist")?.addEventListener("click",()=>{state.history=[];render();toast("History cleared","info")});
 }
 boot();

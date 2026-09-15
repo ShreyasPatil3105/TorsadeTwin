@@ -17,3 +17,9 @@ htmlcov/
 
 node_modules/
 frontend/node_modules/
+
+scratch/
+*.dll
+*.so
+*.dylib
+*.exe
