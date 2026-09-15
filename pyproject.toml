@@ -1,0 +1,48 @@
+[project]
+name = "torsadetwin"
+version = "0.1.0"
+description = "Mechanistic Cardiac Safety Margin + Rescue Engine (in-silico research prototype)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "myokit>=1.34",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pydantic>=2.6",
+    "PyYAML>=6.0",
+    "reportlab>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: heavy validation battery (nightly / pre-demo)",
+    "model: requires the vendored .mmt model artefact",
+    "api: FastAPI TestClient",
+]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["backend/app"]
+[tool.coverage.report]
+fail_under = 85

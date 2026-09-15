@@ -1,0 +1,91 @@
+# HUMAN-REVIEW / TRANSCRIPTION WORKSHEET ONLY.
+# This file is deliberately not read by the runtime registry.  It is not evidence
+# of verification and must not be copied into data/drug_parameters.csv until
+# independent human double-entry, source review, and provenance review are done.
+worksheet_version: 1
+purpose: >-
+  Direct-source transcription candidates for the requested CiPA drugs. Values
+  preserve the source notation and have no VERIFIED status.
+rules:
+  extraction_status_required: HUMAN_REVIEW_REQUIRED
+  verification_status: NOT_VERIFIED
+  runtime_use: PROHIBITED
+  source_values_are_not_specification_evidence: true
+
+sources:
+  crumb_2016:
+    doi: "10.1016/j.vascn.2016.03.009"
+    source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf"
+    citation: >-
+      Crumb WJ Jr, Vicente J, Johannesen L, Strauss DG. An evaluation of 30
+      clinical drugs against the comprehensive in vitro proarrhythmia assay
+      (CiPA) proposed ion channel panel. J Pharmacol Toxicol Methods.
+      2016;81:251-262. doi:10.1016/j.vascn.2016.03.009.
+    exact_location: "Table 2, PDF page 10 (printed journal page 11), present-study values (first value in each pair)."
+    scope: >-
+      Table 2 reports IC50 comparison values only for hERG, Cav1.2, and
+      Nav1.5-peak. It does not report Hill coefficients.
+
+  li_2019:
+    doi: "10.1002/cpt.1184"
+    source_url: "https://ascpt.onlinelibrary.wiley.com/doi/10.1002/cpt.1184"
+    citation: >-
+      Li Z, Ridder BJ, Han X, et al. Assessment of an In Silico Mechanistic
+      Model for Proarrhythmia Risk Prediction Under the CiPA Initiative.
+      Clin Pharmacol Ther. 2019;105(2):466-475. doi:10.1002/cpt.1184.
+    validation_report_url: "https://ascpt.onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1002/cpt.1184&file=cpt1184-sup-0002-SupInfoS2.pdf"
+
+# All 18 directly transcribed source values. `qualifier: GREATER_THAN` means
+# the source reported a highest-tested-concentration bound, not a measured IC50.
+records:
+  - {drug_id: cisapride, parameter: IC50, channel: IKr, value: 0.01, unit: "µM", qualifier: null, source_value: "0.01", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: cisapride, parameter: IC50, channel: ICaL, value: 0.13, unit: "µM", qualifier: GREATER_THAN, source_value: ">0.13", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: cisapride, parameter: IC50, channel: INa_peak, value: 0.13, unit: "µM", qualifier: GREATER_THAN, source_value: ">0.13", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: diltiazem, parameter: IC50, channel: IKr, value: 6.6, unit: "µM", qualifier: null, source_value: "6.6", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: diltiazem, parameter: IC50, channel: ICaL, value: 0.1, unit: "µM", qualifier: null, source_value: "0.1", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: diltiazem, parameter: IC50, channel: INa_peak, value: 12.5, unit: "µM", qualifier: GREATER_THAN, source_value: ">12.5", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: dofetilide, parameter: IC50, channel: IKr, value: 0.002, unit: "µM", qualifier: null, source_value: "0.002", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: dofetilide, parameter: IC50, channel: ICaL, value: 0.006, unit: "µM", qualifier: GREATER_THAN, source_value: ">0.006", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: dofetilide, parameter: IC50, channel: INa_peak, value: 0.006, unit: "µM", qualifier: GREATER_THAN, source_value: ">0.006", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: quinidine, parameter: IC50, channel: IKr, value: 0.3, unit: "µM", qualifier: null, source_value: "0.3", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: quinidine, parameter: IC50, channel: ICaL, value: 5.4, unit: "µM", qualifier: GREATER_THAN, source_value: ">5.4", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: quinidine, parameter: IC50, channel: INa_peak, value: 5.4, unit: "µM", qualifier: GREATER_THAN, source_value: ">5.4", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: sotalol, parameter: IC50, channel: IKr, value: 86.3, unit: "µM", qualifier: null, source_value: "86.3", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: sotalol, parameter: IC50, channel: ICaL, value: 2100, unit: "µM", qualifier: GREATER_THAN, source_value: ">2100", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: sotalol, parameter: IC50, channel: INa_peak, value: 2100, unit: "µM", qualifier: GREATER_THAN, source_value: ">2100", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: verapamil, parameter: IC50, channel: IKr, value: 0.7, unit: "µM", qualifier: null, source_value: "0.7", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; hERG; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: verapamil, parameter: IC50, channel: ICaL, value: 0.1, unit: "µM", qualifier: null, source_value: "0.1", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Cav1.2; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+  - {drug_id: verapamil, parameter: IC50, channel: INa_peak, value: 1.0, unit: "µM", qualifier: GREATER_THAN, source_value: ">1.0", doi: "10.1016/j.vascn.2016.03.009", source_url: "https://cipaproject.org/wp-content/uploads/2016/12/Crumb-30-drugs-on-CiPA-ion-channels-J-Pharm-Tox-Sci-2016-proof-ahead-of-print.pdf", exact_table_figure: "Table 2; Nav1.5-peak; present-study value", source_citation: "Crumb et al. 2016", extraction_status: HUMAN_REVIEW_REQUIRED}
+
+# These are evidence-location findings, not values.  They deliberately remain
+# outside `records` and cannot be mistaken for a pharmacology transcription.
+unresolved_requested_data:
+  - dataset: "Crumb 2016 Hill coefficients for all requested channels"
+    status: SOURCE_REQUIRED
+    finding: "The public main-article Table 2 contains IC50 values only; no Hill coefficients are reported there."
+    required_location: "Crumb 2016 supplementary tables/data package for the full CiPA ion-channel panel."
+    channels: [IKr, ICaL, INa_peak, INaL, IKs, Ito, IK1]
+  - dataset: "Crumb 2016 IC50 values for INaL, IKs, Ito, and IK1"
+    status: SOURCE_REQUIRED
+    finding: "Not present in main-article Table 2; article text directs readers to supplementary tables for source data."
+    required_location: "Crumb 2016 supplementary tables/data package for the full CiPA ion-channel panel."
+  - dataset: "Li 2019 free Cmax and CiPA risk labels for dofetilide, sotalol, quinidine, cisapride, verapamil, and diltiazem"
+    status: SOURCE_LOCATION_NOT_FOUND_FOR_REQUESTED_TRAINING_DRUGS
+    finding: >-
+      The main article identifies 12 training and 16 validation compounds, and
+      Figure 2 shows training qNet distributions by risk color, but it does not
+      provide a tabulated training-drug Cmax/risk-label dataset. The cited
+      Validation Report Supplement S2 Table 5 is explicitly for the 16
+      validation drugs, not these requested training drugs.
+    checked_locations:
+      - "Li 2019 main text, especially Results paragraphs associated with Figure 2 (training) and Supplement S2 (validation)."
+      - "Li 2019 Supplementary Text S2, Tables 1-2 (training block data) and Table 5 (validation risk levels and Cmax)."
+    next_authoritative_source: >-
+      Identify the CiPA training-data publication or original clinical-label
+      source cited by Li et al.; do not infer labels or Cmax from Figure 2.
+
+human_double_entry_requirements:
+  - "A second human independently transcribes each record from the cited table."
+  - "A reviewer reconciles both entries, preserves GREATER_THAN qualifiers, and records identity/date."
+  - "A pharmacology reviewer confirms channel mapping, units, assay context, and whether censored values are admissible."
+  - "Only then may approved values enter the registry under the project provenance rules."

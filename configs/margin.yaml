@@ -1,0 +1,34 @@
+# Frozen margin engine config (§9).
+# Working coords u = (K_o, log2(m_d + eps)); normalised z_i = (u_i - u_i^0)/s_i.
+scales:
+  k_o_mM: 1.0        # one mM of K+
+  exposure: 1.0      # one doubling of exposure (u is log2)
+eps_log2: 1.0e-6
+# Weighting W = diag(w_i); default w_i = 1 for all axes.
+weights:
+  default: 1.0
+# Box constraints (clinically plausible bounds; §9.2).
+box:
+  k_o_mM: [3.0, 5.5]
+  exposure_multiplier: [0.0625, 4.0]   # m_d in [1/16, 4] -> log2 in [-4, 2]
+# Tolerances / budgets (§9.4-§9.5).
+tol_z: 1.0e-3
+max_iter_bisect: 20
+max_evals_per_axis: 30
+tol_phi: 1.0e-4
+n_scan_coarse: 9
+n_scan_fine: 25
+max_evals: 300
+# Stage B direction sampling.
+directions:
+  n_angles_2d: 64
+  n_fib_3d: 128
+  n_halton_max: 256
+  halton_seed: 12345
+  radial_step: 0.25
+  max_iter_bisect_stage_b: 15
+# Stage C SLSQP.
+stage_c:
+  maxiter: 30
+  fd_step: 1.0e-3
+unit_convention: "1 normalised unit = 1 mM K+ = one doubling of exposure"

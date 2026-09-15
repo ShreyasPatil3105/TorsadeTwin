@@ -1,0 +1,20 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TorsadeTwin",
+    "version": "0.1.0",
+    "description": "Mechanistic Cardiac Safety Margin + Rescue Engine (in-silico research prototype)"
+  },
+  "paths": {
+    "/api/v1/health": {"get": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/drugs": {"get": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/scenarios": {"get": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/validation": {"get": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/simulate": {"post": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/margin": {"post": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/rescue": {"post": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/blindspot": {"post": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/verify": {"post": {"responses": {"200": {"description": "OK"}}}},
+    "/api/v1/report": {"post": {"responses": {"200": {"description": "OK"}}}}
+  }
+}

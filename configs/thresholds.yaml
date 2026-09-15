@@ -1,0 +1,14 @@
+# Frozen boundary calibration (§8.3-§8.4).
+# Internal calibration: qNet_boundary = rho * qNet_ctrl. rho is a DECLARED modelling
+# convention, not a clinical cutoff. Changing rho changes the config_hash.
+rho: 0.75
+boundary_label: "model-defined boundary: qNet = 75% of drug-free control (declared convention, not a clinical threshold)"
+# Published CiPA thresholds are REFERENCE ONLY (deviation D1). The code refuses to use any
+# threshold whose usable_as_boundary is false as the Phi boundary.
+literature_reference:
+  threshold_1_C_per_F: 0.0609
+  threshold_2_C_per_F: 0.0483
+  source_doi: "10.1002/cpt.1184"
+  verification_status: PLACEHOLDER   # -> VERIFIED only after a human reads the cited paper
+  comparability: LITERATURE_REFERENCE_NOT_COMPARABLE
+  usable_as_boundary: false

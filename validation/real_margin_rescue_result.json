@@ -1,0 +1,37 @@
+{
+  "project": "TorsadeTwin",
+  "runner": "run_real_margin_rescue.py",
+  "protocol": {
+    "cl_ms": 2000,
+    "n_prepace": 1000,
+    "n_warm": 200,
+    "qnet_primary": true,
+    "boundary_fraction": 0.75,
+    "boundary": 0.05223678637982834,
+    "qnet_control_C_per_F": 0.06964904850643779
+  },
+  "index_case": {
+    "k_o_mM": 4.5,
+    "drug": "dofetilide",
+    "exposure_multiplier": 1.0
+  },
+  "margin": {
+    "m_status": "BUDGET_EXCEEDED",
+    "n_phi_evals": 270,
+    "signed_margin": -0.859375
+  },
+  "rescue": {
+    "result": "INFEASIBLE_EXHAUSTIVE",
+    "best_action": "None"
+  },
+  "phi_budget": {
+    "GLOBAL_PHI_BUDGET": 300,
+    "TOTAL_PHI_EVALUATIONS": 300,
+    "margin_calls": 270,
+    "rescue_calls": 9,
+    "fill_calls": 21,
+    "exact": true
+  },
+  "runtime_seconds": 9796.38862490654,
+  "scientific_note": "Synthetic computational scenario; not clinical validation or patient-specific decision support."
+}

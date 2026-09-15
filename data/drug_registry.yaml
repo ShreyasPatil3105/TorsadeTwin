@@ -1,0 +1,81 @@
+# Drug registry (§5.3). cmax_free_nM values are PLACEHOLDER until a human transcribes
+# them from Li et al. 2019 (doi:10.1002/cpt.1184) and marks them VERIFIED.
+# Free C_max values as published in the CiPA training set; cmax_basis: free is mandatory.
+drugs:
+  - drug_id: dofetilide
+    drug_name: Dofetilide
+    cmax_free_nM: 2
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: high
+    qt_risk_class_manual: null
+    notes: "canonical selective IKr blocker; direction test"
+  - drug_id: sotalol
+    drug_name: Sotalol
+    cmax_free_nM: 14690
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: high
+    qt_risk_class_manual: null
+    notes: "high-risk, high-concentration case"
+  - drug_id: quinidine
+    drug_name: Quinidine
+    cmax_free_nM: 3237
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: high
+    qt_risk_class_manual: null
+    notes: "multichannel high-risk"
+  - drug_id: cisapride
+    drug_name: Cisapride
+    cmax_free_nM: 2.6
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: intermediate
+    qt_risk_class_manual: null
+    notes: "intermediate separation"
+  - drug_id: verapamil
+    drug_name: Verapamil
+    cmax_free_nM: 81
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: low
+    qt_risk_class_manual: null
+    notes: "strong hERG block offset by ICaL block - key multichannel control"
+  - drug_id: diltiazem
+    drug_name: Diltiazem
+    cmax_free_nM: 122
+    cmax_source_doi: "10.1002/cpt.1184"
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0, 0.75, 0.5, 0.25]
+    cipa_training_risk_label: low
+    qt_risk_class_manual: null
+    notes: "low-risk negative control"
+  - drug_id: control
+    drug_name: Control
+    cmax_free_nM: 0.0
+    cmax_source_doi: ""
+    cmax_basis: free
+    max_validated_multiple: 25
+    discontinuable: false
+    dose_steps: [1.0]
+    cipa_training_risk_label: ""
+    qt_risk_class_manual: null
+    notes: "drug-free reference for boundary calibration"

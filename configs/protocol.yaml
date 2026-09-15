@@ -1,0 +1,12 @@
+cl_max_ms: 2000
+cl_min_ms: 500
+cl_ms: 2000
+cl_step_ms: 100
+n_extra_block: 100
+n_extra_max: 1000
+n_prepace: 1000
+n_warm: 200
+stimulus:
+  amplitude_A_per_F: -80.0
+  duration_ms: 0.5
+  offset_ms: 50.0

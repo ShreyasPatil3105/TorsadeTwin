@@ -1,0 +1,23 @@
+# Frozen model selection (§3). Only two legal values: ORd-CiPA-v1.0 (default), ORd2011-endo.
+model_id: ORd-CiPA-v1.0
+artefact: models/ord_cipa_v1.mmt
+vendor_cellml: models/vendor/ohara_rudy_cipa_v1_2017.cellml
+vendor_url: https://models.cellml.org/e/5a0
+cell_type: endo            # frozen: endocardial only in v1.0
+apply_dutta_scaling: true  # set false if the vendored CellML already embeds the Dutta 2017 factors; see models/SCALING_AUDIT.md
+# Dutta 2017 optimised conductance multipliers (transcribed, do not re-derive):
+dutta_scaling:
+  IKr: 1.013
+  IKs: 1.870
+  IK1: 1.698
+  ICaL: 1.007
+  INaL: 2.661
+# Dynamic hERG binding (Li 2017) is DISABLED per deviation D1: drug concentration in the
+# binding sub-model is held at 0. The disable action is asserted by test_herg_dynamic_disabled.py.
+herg_dynamic_binding: DISABLED
+herg_dynamic_reason: "Deviation D1: MVP uses Hill/pore block on all channels; dynamic drug-hERG binding pathway disabled (drug concentration held at 0)."
+# Fallback model (§3.4): only on documented primary failure recorded in docs/FALLBACK_INVOKED.md
+fallback:
+  model_id: ORd2011-endo
+  artefact: models/ord_2011_endo.mmt
+  caveat: ORD2011_EAD_SENSITIVITY

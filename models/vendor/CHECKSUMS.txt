@@ -1,0 +1,2 @@
+# Vendor artefact checksums — written by scripts/fetch_model.py (network once).
+# Format: <sha256>  <filename>

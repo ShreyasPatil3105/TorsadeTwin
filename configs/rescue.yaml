@@ -1,0 +1,17 @@
+# Frozen rescue engine config (§11).
+tau: 0.05            # Phi_target = tau * qNet_ctrl; target margin: qNet at least 5% of control above the boundary
+target_label: "target margin: qNet at least 5% of control above the model-defined boundary"
+# Action grids (§11.3).
+action:
+  k_correction_targets_mM: [3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4]
+  k_ceiling_mM: 5.4
+  exposure_reduction_factors: [0.75, 0.5, 0.25]
+  max_action_set_size: 40
+# Cost function (§11.4) — declared search preference, not clinical utility.
+cost_weights:
+  w_K: 1.0
+  w_E: 1.0
+  w_D: 6.0
+tol_cost: 1.0e-9
+tol_phi_borderline: 1.0e-4   # within tol_phi of the target -> BORDERLINE -> weaker status
+search_scope: single_actions_only

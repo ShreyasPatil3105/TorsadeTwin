@@ -1,0 +1,21 @@
+# Frozen input domains (§7). Hard reject outside these ranges; never silent clamp.
+k_o_mM:
+  min: 2.5
+  max: 7.0
+  default: 5.4
+  plausible_min: 3.0
+  plausible_max: 5.5
+  plausible_rationale: "Clinical plausibility band 3.0-5.5 mM declared with rationale; ORd 2011 baseline ko = 5.4 mM."
+exposure_multiplier:
+  min: 0.0
+  max: 25.0
+  default: 1.0
+  max_validated_multiple: 25
+  calibrated_rationale: "CiPA simulations span 1-25x Cmax."
+cl_ms:
+  min: 500
+  max: 2000
+  default: 2000
+  margin_axis: false
+  margin_axis_reason: "CL_EXCLUDED_PROTOCOL_BOUND"
+max_drugs: 4
