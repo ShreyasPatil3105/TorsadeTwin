@@ -8,7 +8,7 @@ const state = {
   solver: "standard", comboRule: "indep_mult", tau: 0.05,
   simulate: null, margin: null, rescue: null, blindspot: null,
   busy: false, busyOp: null, error: null, activeTab: "mechanism", activeNav: "overview",
-  history: [], apiOnline: false,
+  history: [], apiOnline: false, llmAnswer: null, llmError: null, llmBusy: false,
 };
 
 const frozenCopy = {
@@ -163,6 +163,20 @@ async function exportReport(){
   }catch(e){toast(e.message,"error")}finally{setBusy(false)}
 }
 
+async function askTwin(){
+  const question = $("#llm-question")?.value.trim();
+  if(!question) return;
+  state.llmBusy=true; state.llmAnswer=null; state.llmError=null; render();
+  try{
+    const result=await api("/llm/explain",{method:"POST",body:JSON.stringify({
+      question,
+      context:state.simulate?{qnet_C_per_F:state.simulate.qnet_C_per_F,apd90_ms:state.simulate.apd90_ms,phi_C_per_F:state.simulate.phi_C_per_F,credibility:state.simulate.credibility}:undefined
+    })});
+    state.llmAnswer=result.answer;
+  }catch(e){state.llmError=e.message}
+  finally{state.llmBusy=false;render()}
+}
+
 function render(){
   const root=$("#app");
   root.innerHTML=`
@@ -253,6 +267,18 @@ function render(){
 
       ${resultsSection()}
       ${tabsSection()}
+
+      <div class="llm-assistant">
+        <div class="llm-panel">
+          <div class="section-kicker">OPTIONAL RESEARCH AID</div>
+          <div class="llm-title">Ask Twin</div>
+          <textarea id="llm-question" rows="2" maxlength="2000" placeholder="Ask about the current model result...">${esc(state.llmQuestion||"")}</textarea>
+          <button class="primary llm-ask" id="llm-ask" ${state.llmBusy?"disabled":""}>${state.llmBusy?"Asking…":"Ask"}</button>
+          ${state.llmError?`<div class="llm-error">${esc(state.llmError)}</div>`:""}
+          ${state.llmAnswer?`<div class="llm-answer">${esc(state.llmAnswer)}</div>`:""}
+          <div class="llm-disclaimer">Research explanation only. Not clinically validated or for clinical decision-making.</div>
+        </div>
+      </div>
 
       <footer class="footer">
         <div><b>TorsadeTwin</b> · VIT Chennai · In-silico research prototype</div>
@@ -628,6 +654,7 @@ function bind(){
   }));
   $("#verify")?.addEventListener("click",()=>{state.activeNav="validation";state.activeTab="verification";render()});$("#verify2")?.addEventListener("click",runVerify);
   $("#report")?.addEventListener("click",exportReport);$("#report2")?.addEventListener("click",exportReport);
+  $("#llm-ask")?.addEventListener("click",askTwin);
   $("#blindspot")?.addEventListener("click",runBlindspot);
   $$("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
     state.activeTab=b.dataset.tab;
