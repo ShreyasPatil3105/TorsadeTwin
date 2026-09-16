@@ -86,7 +86,10 @@ __declspec(dllexport) int simulate_cipa(
     int n_steps,             /* number of steps = cl_ms / dt_log */
     double* out_t,           /* logged time buffer [n_steps] */
     double* out_v,           /* logged voltage buffer [n_steps] */
-    double* out_inet         /* logged net current buffer [n_steps] */
+    double* out_inet,        /* logged net current buffer [n_steps] */
+    double rtol,             /* relative tolerance */
+    double atol,             /* absolute tolerance */
+    double max_step          /* max step size ms */
 ) {
     int flag;
     SUNContext sundials_context;
@@ -145,11 +148,13 @@ __declspec(dllexport) int simulate_cipa(
     flag = CVodeSetLinearSolver(cvode_mem, LS, A);
     if (flag != 0) return -5;
 
-    flag = CVodeSStolerances(cvode_mem, 1e-6, 1e-8);
+    flag = CVodeSStolerances(cvode_mem, rtol > 0.0 ? rtol : 1e-8, atol > 0.0 ? atol : 1e-10);
     if (flag != 0) return -6;
 
     CVodeSetMaxNumSteps(cvode_mem, 100000);
-    CVodeSetMaxStep(cvode_mem, 0.5);
+    if (max_step > 0.0) {
+        CVodeSetMaxStep(cvode_mem, max_step);
+    }
 
     double t = 0.0;
 
@@ -265,6 +270,9 @@ __declspec(dllexport) int simulate_cipa(
             ctypes.POINTER(ctypes.c_double), # out_t
             ctypes.POINTER(ctypes.c_double), # out_v
             ctypes.POINTER(ctypes.c_double), # out_inet
+            ctypes.c_double,                # rtol
+            ctypes.c_double,                # atol
+            ctypes.c_double,                # max_step
         ]
         fn.restype = ctypes.c_int
         _c_sim_fn = fn
@@ -290,6 +298,9 @@ def run_c_simulation(
     warm_state: list[float] | None = None,
     dt_log: float = 0.1,
     n_beats: int | None = None,
+    rtol: float = 1e-8,
+    atol: float = 1e-10,
+    max_step: float = 0.1,
 ):
     """Run simulation using the high-performance native compiled CVODES DLL."""
     global _c_sim_fn
@@ -327,7 +338,8 @@ def run_c_simulation(
 
     ret = _c_sim_fn(
         state_ptr, cl, ko, g_kr, p_ca, g_na, g_nal, g_ks, g_k1, g_to,
-        n_beats, dt_log, n_steps, t_ptr, v_ptr, inet_ptr
+        n_beats, dt_log, n_steps, t_ptr, v_ptr, inet_ptr,
+        float(rtol), float(atol), float(max_step)
     )
     if ret != 0:
         raise TorsadeTwinError("E_NUMERICAL_INSTABILITY", f"Native CVODES failed with code {ret}", http_status=422)

@@ -29,7 +29,7 @@ class BlindspotResult:
 
 
 def run_blindspot(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, sweep: dict,
-                  score: TisdaleScore, score_inputs: dict, margin_cfg: dict, qnet_ctrl: float) -> BlindspotResult:
+                  score: TisdaleScore, score_inputs: dict, margin_cfg: dict | None = None, qnet_ctrl: float = 0.075) -> BlindspotResult:
     """§13.3 methodology."""
     var = sweep["variable"]
     lo = float(sweep["from_"] if "from_" in sweep else sweep.get("from", 0))
@@ -47,8 +47,11 @@ def run_blindspot(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, sweep: dic
         state = _set_variable(x0, var, g)
         res = phi(state)
         phi_vals.append(res.phi)
-        mr = compute_margin(phi, state, _axes(state), margin_cfg)
-        margin_vals.append(mr.m_signed)
+        if margin_cfg:
+            mr = compute_margin(phi, state, _axes(state), margin_cfg)
+            margin_vals.append(mr.m_signed)
+        else:
+            margin_vals.append(None)
         k_o = g if var == "k_o_mM" else x0.k_o_mM
         lo_s, hi_s = score_tisdale(score, score_inputs, k_o)
         s_min.append(lo_s)
@@ -58,9 +61,12 @@ def run_blindspot(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, sweep: dic
     # crossing point: first g where Phi changes sign
     crossing = None
     for i in range(1, len(grid)):
-        if phi_vals[i - 1] * phi_vals[i] <= 0 and phi_vals[i - 1] != phi_vals[i]:
-            crossing = float(grid[i])
-            break
+        p_prev = phi_vals[i - 1]
+        p_curr = phi_vals[i]
+        if p_prev is not None and p_curr is not None:
+            if p_prev * p_curr <= 0 and p_prev != p_curr:
+                crossing = float(grid[i])
+                break
 
     # insensitivity intervals: maximal contiguous sub-intervals where band constant and |Phi(g)-Phi(g_start)| >= delta
     intervals: list[dict] = []
@@ -71,9 +77,12 @@ def run_blindspot(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, sweep: dic
         while end + 1 < len(grid) and bands[end + 1] == band:
             end += 1
         if end > start:
-            delta = abs(phi_vals[end] - phi_vals[start])
-            if delta >= delta_phi_min:
-                intervals.append({"from": grid[end], "to": grid[start], "band": band, "delta_phi": round(delta, 4)})
+            p_end = phi_vals[end]
+            p_start = phi_vals[start]
+            if p_end is not None and p_start is not None:
+                delta = abs(p_end - p_start)
+                if delta >= delta_phi_min:
+                    intervals.append({"from": grid[end], "to": grid[start], "band": band, "delta_phi": round(delta, 4)})
         start = end + 1
 
     verdict = _verdict(var, grid, bands, s_min, s_max, margin_vals, crossing)

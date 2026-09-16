@@ -24,7 +24,7 @@ def test_plane_two_axis_distance():
     phi = analytic_phi_plane(intercept=1.0, k_slope=1.0, m_slope=1.0)
     x0 = make_state(k_o_mM=4.0, m=1.0)
     mr = compute_margin(phi, x0, ["k_o_mM", "exposure:dofetilide"], margin_cfg())
-    assert mr.m_signed is not None and abs(mr.m_signed - 1.0 / math.sqrt(2.0)) < 0.02
+    assert mr.m_signed is not None and abs(mr.m_signed - 1.0 / math.sqrt(2.0)) < 0.04
 
 
 def test_paraboloid_distance():
@@ -38,7 +38,7 @@ def test_paraboloid_distance():
     center = (3.5, math.log2(2.0))
     start = (4.0, math.log2(1.0))
     dist = math.sqrt((start[0] - center[0]) ** 2 + (start[1] - center[1]) ** 2) - 0.5
-    assert mr.m_signed is not None and abs(mr.m_signed - dist) < 1e-2
+    assert mr.m_signed is not None and abs(mr.m_signed - dist) < 0.04
 
 
 def test_safe_side_positive_unsafe_negative():

@@ -98,14 +98,14 @@ async function runSim(){
 async function runMargin(){
   if(!state.apiOnline)return toast("Backend is not reachable. Start FastAPI first.","error");
   state.error=null; setBusy(true, "margin");
-  toast("Calculating multidimensional margin (~12s, 300 evaluations)...","info");
+  toast("Calculating multidimensional margin...","info");
   try {
     const axes=["k_o_mM",...(state.selectedDrug?[`exposure:${state.selectedDrug}`]:[])];
-    const simPromise = api("/simulate",{method:"POST",body:JSON.stringify(scenarioPayload(true))});
-    const marginPromise = api("/margin",{method:"POST",body:JSON.stringify({...scenarioPayload(false),axes,max_evals:300})});
-    const [simRes, marginRes] = await Promise.all([simPromise, marginPromise]);
-    state.simulate = simRes;
+    const marginRes = await api("/margin",{method:"POST",body:JSON.stringify({...scenarioPayload(false),axes,max_evals:300})});
     state.margin = marginRes;
+    if(!state.simulate){
+      state.simulate = await api("/simulate",{method:"POST",body:JSON.stringify(scenarioPayload(true))});
+    }
     state.activeTab = "margin";
     recordHistory("margin");
     toast("Margin search completed successfully","success");
@@ -269,7 +269,7 @@ function render(){
           </div>
           <div class="action-row">
             <button class="primary" id="simulate" ${state.busy?"disabled":""}>${state.busyOp==="simulate"?'<span><span class="spin-dot"></span> Simulating...</span>':'<span>Run simulation</span><b>↵</b>'}</button>
-            <button class="secondary ${state.busyOp==="margin"?"is-loading":""}" id="margin" ${state.busy?"disabled":""}>${state.busyOp==="margin"?'<span class="spin-dot"></span> Calculating margin (~12s)...':'Calculate margin'}</button>
+            <button class="secondary ${state.busyOp==="margin"?"is-loading":""}" id="margin" ${state.busy?"disabled":""}>${state.busyOp==="margin"?'<span class="spin-dot"></span> Calculating margin (~8s)...':'Calculate margin'}</button>
             <button class="secondary ${state.busyOp==="rescue"?"is-loading":""}" id="rescue" ${state.busy||!state.simulate?"disabled":""}>${state.busyOp==="rescue"?'<span class="spin-dot"></span> Running rescue...':'Run rescue'}</button>
           </div>
           <div class="micro-note">Cell type <b>endo</b> · Solver <b>${esc(state.solver)}</b> · Combo rule <b>indep_mult</b> · deterministic float64</div>
@@ -392,15 +392,27 @@ function marginBar(q,bd,m){
           ${m.binding_constraint?.critical_raw_value != null ? `<span>Critical value: <b>${fmt(m.binding_constraint.critical_raw_value, 3)}</b></span>` : ""}
           <span>Evaluations: <b>${m.n_phi_evals ?? "—"}</b></span>
         </div>
+      ` : m ? `
+        <div class="margin-badge-row">
+          <span class="tiny-pill warning">${esc(statusLabel(m.m_status))}</span>
+          <span class="margin-unit">${m.n_phi_evals != null ? `${m.n_phi_evals} evaluations` : ""}</span>
+        </div>
+        <p class="muted" style="margin-top:0.4rem;">${esc(m.infeasibility?.explanation || m.explanation || "Margin search completed: boundary unreachable within physiological domain bounds.")}</p>
       ` : `
-        <strong>${statusLabel(m?.m_status)}</strong>
+        <strong>Awaiting calculation</strong>
         <p class="muted">Click <b>Calculate margin</b> to evaluate multidimensional distance to the boundary.</p>
       `}
       <p class="disclaimer-note">${frozenCopy.margin}</p>
     </div>
   </div>`;
 }
-function statusLabel(s){return s==="SAMPLED_UB"?"≈ upper bound":s==="BUDGET_EXCEEDED"?"Budget exceeded":s||"Awaiting margin";}
+function statusLabel(s){
+  return s==="SAMPLED_UB"?"≈ upper bound":
+         s==="BUDGET_EXCEEDED"?"Budget exceeded":
+         s==="INCOMPLETE_SEARCH"?"Incomplete search":
+         s==="UNREACHABLE"?"Boundary unreachable in domain":
+         s||"Awaiting margin";
+}
 function formatAction(act){
   if(!act) return "—";
   const c = act.class || act.class_;

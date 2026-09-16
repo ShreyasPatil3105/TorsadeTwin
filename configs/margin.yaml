@@ -13,22 +13,23 @@ box:
   exposure_multiplier: [0.0625, 4.0]   # m_d in [1/16, 4] -> log2 in [-4, 2]
 # Tolerances / budgets (§9.4-§9.5).
 tol_z: 1.0e-3
-max_iter_bisect: 20
-max_evals_per_axis: 30
+max_iter_bisect: 12
+max_evals_per_axis: 15
 tol_phi: 1.0e-4
-n_scan_coarse: 9
-n_scan_fine: 25
+n_scan_coarse: 5
+n_scan_fine: 9
 max_evals: 300
 # Stage B direction sampling.
 directions:
-  n_angles_2d: 64
+  n_angles_2d: 12
   n_fib_3d: 128
   n_halton_max: 256
   halton_seed: 12345
   radial_step: 0.25
-  max_iter_bisect_stage_b: 15
+  max_iter_bisect_stage_b: 6
 # Stage C SLSQP.
 stage_c:
-  maxiter: 30
+  maxiter: 8
   fd_step: 1.0e-3
 unit_convention: "1 normalised unit = 1 mM K+ = one doubling of exposure"
+

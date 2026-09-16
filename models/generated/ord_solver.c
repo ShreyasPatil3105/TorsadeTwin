@@ -8,7 +8,7 @@ typedef sunrealtype realtype;
 #define RCONST(x) ((sunrealtype)(x))
 /*
 ohara_rudy_cipa_v1_2017
-Generated on 2026-09-16 11:52:52
+Generated on 2026-09-16 13:08:45
 
 Compiling on GCC:
  $ gcc -Wall -lm -lsundials_nvecserial -lsundials_cvode sim.c
@@ -1154,7 +1154,10 @@ __declspec(dllexport) int simulate_cipa(
     int n_steps,             /* number of steps = cl_ms / dt_log */
     double* out_t,           /* logged time buffer [n_steps] */
     double* out_v,           /* logged voltage buffer [n_steps] */
-    double* out_inet         /* logged net current buffer [n_steps] */
+    double* out_inet,        /* logged net current buffer [n_steps] */
+    double rtol,             /* relative tolerance */
+    double atol,             /* absolute tolerance */
+    double max_step          /* max step size ms */
 ) {
     int flag;
     SUNContext sundials_context;
@@ -1184,6 +1187,12 @@ __declspec(dllexport) int simulate_cipa(
     AC_GK1 = AC_GK1 * g_k1;
     AC_Gto = AC_Gto * g_to;
 
+    AC_i_Stim_Start = 50.0;
+    AC_i_Stim_End = 1e17;
+    AC_i_Stim_Period = cl_ms;
+    AC_i_Stim_PulseDuration = 0.5;
+    AC_i_Stim_Amplitude = -80.0;
+
     /* Copy initial state or use defaults */
     if (state_inout != NULL && state_inout[0] != 0.0) {
         for (int i = 0; i < N_STATE; i++) {
@@ -1207,11 +1216,13 @@ __declspec(dllexport) int simulate_cipa(
     flag = CVodeSetLinearSolver(cvode_mem, LS, A);
     if (flag != 0) return -5;
 
-    flag = CVodeSStolerances(cvode_mem, 1e-6, 1e-8);
+    flag = CVodeSStolerances(cvode_mem, rtol > 0.0 ? rtol : 1e-8, atol > 0.0 ? atol : 1e-10);
     if (flag != 0) return -6;
 
     CVodeSetMaxNumSteps(cvode_mem, 100000);
-    CVodeSetMaxStep(cvode_mem, 0.5);
+    if (max_step > 0.0) {
+        CVodeSetMaxStep(cvode_mem, max_step);
+    }
 
     double t = 0.0;
 
@@ -1223,7 +1234,7 @@ __declspec(dllexport) int simulate_cipa(
         if (flag != 0) return -7;
 
         if (b < n_beats - 1) {
-            /* Prepacing beat */
+            /* Discarded prepacing beat */
             flag = CVode(cvode_mem, 50.0, y, &t, CV_NORMAL);
             pace = -80.0;
             flag = CVodeReInit(cvode_mem, 50.0, y);

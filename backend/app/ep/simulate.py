@@ -86,9 +86,18 @@ class EpEngine:
             from .c_solver import is_c_solver_available, run_c_simulation
             if is_c_solver_available():
                 dt_log = float(self.solver_profile.get("dt_log_ms", 0.1))
-                return run_c_simulation(
-                    state, block_unblocked, return_trace=return_trace, warm_state=warm_state, dt_log=dt_log
+                rtol = float(self.solver_profile.get("rtol", 1e-8))
+                atol = float(self.solver_profile.get("atol", 1e-10))
+                max_step = float(self.solver_profile.get("max_step_ms", 0.1))
+                n_pre = int(self.protocol.get("n_prepace", 1000))
+                res = run_c_simulation(
+                    state, block_unblocked, return_trace=return_trace, warm_state=warm_state,
+                    dt_log=dt_log, rtol=rtol, atol=atol, max_step=max_step
                 )
+                if n_pre < 10 and warm_state is None:
+                    res.converged = False
+                    res.convergence["converged"] = False
+                return res
 
         if force_scipy or EpEngine._myokit_available is False:
             return self._simulate_scipy_bdf(state, block_unblocked, return_trace=return_trace, warm_state=warm_state)

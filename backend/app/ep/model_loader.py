@@ -88,7 +88,7 @@ class ModelLoader:
             if not line or line.startswith("#"):
                 continue
             parts = line.split()
-            if len(parts) >= 2 and self.model_path.name in parts[1]:
+            if len(parts) >= 2 and (self.model_path.name in parts[1] or self.model_path.suffix == Path(parts[1]).suffix):
                 return parts[0]
         return None
 
