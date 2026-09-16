@@ -125,7 +125,7 @@ def create_app(config_root: Path | None = None, registry: DrugRegistry | None = 
         return LLMExplainResponse(
             answer=answer,
             model=model,
-            disclaimer="Research explanation only. Not clinically validated or for clinical decision-making.",
+            disclaimer="Research explanation only. Not medical advice.",
         )
 
     @app.post("/api/v1/simulate")

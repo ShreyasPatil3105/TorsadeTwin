@@ -276,7 +276,7 @@ function render(){
           <button class="primary llm-ask" id="llm-ask" ${state.llmBusy?"disabled":""}>${state.llmBusy?"Asking…":"Ask"}</button>
           ${state.llmError?`<div class="llm-error">${esc(state.llmError)}</div>`:""}
           ${state.llmAnswer?`<div class="llm-answer">${esc(state.llmAnswer)}</div>`:""}
-          <div class="llm-disclaimer">Research explanation only. Not clinically validated or for clinical decision-making.</div>
+          <div class="llm-disclaimer">Research explanation only. Not medical advice.</div>
         </div>
       </div>
 

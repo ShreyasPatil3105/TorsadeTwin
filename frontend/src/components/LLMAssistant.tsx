@@ -53,7 +53,7 @@ export function LLMAssistant({ simulation }: LLMAssistantProps) {
           </button>
           {error && <div className="llm-error">{error}</div>}
           {answer && <div className="llm-answer">{answer}</div>}
-          <p className="llm-disclaimer">Research explanation only. Not clinically validated or for clinical decision-making.</p>
+          <p className="llm-disclaimer">Research explanation only. Not medical advice.</p>
         </div>
       )}
       <button className="llm-launch" onClick={() => setOpen((value) => !value)} aria-label="Open Ask Twin">
