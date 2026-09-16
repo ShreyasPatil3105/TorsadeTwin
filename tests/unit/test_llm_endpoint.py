@@ -1,30 +1,22 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+import pytest
+from pydantic import ValidationError
 
-from backend.app.main import ROOT, create_app
+from backend.app.schemas.llm import LLMExplainRequest
+from backend.app.services.errors import TorsadeTwinError
+from backend.app.services.groq_llm import explain
 
 
 def test_llm_endpoint_requires_server_side_key(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    client = TestClient(create_app(ROOT))
 
-    response = client.post(
-        "/api/v1/llm/explain",
-        json={"question": "What does qNet represent?"},
-    )
+    with pytest.raises(TorsadeTwinError) as error:
+        explain("What does qNet represent?")
 
-    assert response.status_code == 503
-    assert response.json()["error_code"] == "E_LLM_NOT_CONFIGURED"
+    assert error.value.code == "E_LLM_NOT_CONFIGURED"
 
 
-def test_llm_request_rejects_unknown_fields(monkeypatch):
-    monkeypatch.delenv("GROQ_API_KEY", raising=False)
-    client = TestClient(create_app(ROOT))
-
-    response = client.post(
-        "/api/v1/llm/explain",
-        json={"question": "Explain this.", "api_key": "must-not-be-client-supplied"},
-    )
-
-    assert response.status_code == 422
+def test_llm_request_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        LLMExplainRequest(question="Explain this.", api_key="must-not-be-client-supplied")
