@@ -1,4 +1,4 @@
-# Pinned dependencies (§19.1).
+﻿# Pinned dependencies (┬º19.1).
 # Python 3.11 target. Requires network once to install.
 numpy>=1.26
 scipy>=1.11

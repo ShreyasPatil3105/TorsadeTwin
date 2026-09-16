@@ -14,12 +14,33 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from pathlib import Path
+import mimetypes
 import os
+
+# Always declare utf-8 for text/script/style types so the browser never
+# falls back to Latin-1 and garbles the UTF-8 strings in app.js.
+_CHARSET_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".htm": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".ts": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+}
 
 ROOT = Path(__file__).resolve().parent
 BACKEND = os.environ.get("TORSADETWIN_BACKEND", "http://127.0.0.1:8000").rstrip("/")
 
 class Handler(SimpleHTTPRequestHandler):
+    def guess_type(self, path):
+        ext = Path(str(path)).suffix.lower()
+        if ext in _CHARSET_TYPES:
+            return _CHARSET_TYPES[ext]
+        return super().guess_type(path)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 

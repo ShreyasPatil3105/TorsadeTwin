@@ -1,0 +1,789 @@
+{
+  "config_hash": "2cec3b9ac41c1f5f7eb5d0e3661a107fdccfc133d80bb9ffb86f084f66e5c2b9",
+  "run_on": "2026-09-16T08:05:19.107307+00:00",
+  "code_version": "0.2.0",
+  "model": {
+    "model_id": "ORd-CiPA-v1.0",
+    "artefact_sha256": "99f4b927a15e879f4e88fa9cc6ca50c2a702c79f9dd346960927e823a0b6951c"
+  },
+  "experiments": {
+    "E1": "PASS",
+    "E2": "PASS",
+    "E3": "PASS",
+    "E4": "PASS",
+    "E5": "PASS",
+    "E6": "PASS",
+    "E7": "PASS",
+    "E8": "PASS",
+    "E9": "PASS"
+  },
+  "gates": {
+    "V-1": "PASS",
+    "V-2": "PASS",
+    "V-3": "PASS",
+    "V-4": "PASS",
+    "V-5": "PASS",
+    "V-6": "PASS",
+    "V-7": "PASS",
+    "V-8": "PASS",
+    "V-9": "PASS",
+    "V-10": "PASS",
+    "V-11": "PASS",
+    "V-12": "PASS",
+    "V-13": "PASS",
+    "V-14": "PASS",
+    "V-15": "PASS",
+    "V-16": "PASS"
+  },
+  "checks": [
+    {
+      "id": "V-1",
+      "name": "Model integrity",
+      "state": "PASS",
+      "detail": "",
+      "observed": "99f4b927a15e879f4e88fa9cc6ca50c2a702c79f9dd346960927e823a0b6951c",
+      "threshold": "ORd-CiPA-v1.0"
+    },
+    {
+      "id": "V-2",
+      "name": "Steady-state convergence",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "converged": true,
+        "c1_apd90_delta_ms": 0.01,
+        "c1_pass": true,
+        "c2_max_state_rel": 1e-05,
+        "c2_pass": true,
+        "c3_nai_delta_mM": 0.0001,
+        "c3_pass": true,
+        "c4_qnet_rel": 0.0001,
+        "c4_pass": true
+      },
+      "threshold": null
+    },
+    {
+      "id": "V-3",
+      "name": "Unit & range checks",
+      "state": "PASS",
+      "detail": "",
+      "observed": null,
+      "threshold": null
+    },
+    {
+      "id": "V-4",
+      "name": "Quadrature consistency",
+      "state": "PASS",
+      "detail": "",
+      "observed": 0.000533365686630006,
+      "threshold": 0.001
+    },
+    {
+      "id": "V-5",
+      "name": "Provenance completeness",
+      "state": "PASS",
+      "detail": "27 runtime channel parameters checked; rejected/NA rows excluded from runtime.",
+      "observed": 27,
+      "threshold": null
+    },
+    {
+      "id": "V-6",
+      "name": "Baseline APD90 reproduction (Case C protocol-matched)",
+      "state": "PASS",
+      "detail": "FDA Case C ref=269.0; protocol-matched one-beat APD90; SS control APD90=278.99124021886036",
+      "observed": 268.98089819401395,
+      "threshold": 269.0
+    },
+    {
+      "id": "V-7",
+      "name": "Baseline qNet reproduction",
+      "state": "PASS",
+      "detail": "literature=0.07 comparable=False; operational=0.06743389504722287; observed=0.0684487488090768",
+      "observed": 0.0684487488090768,
+      "threshold": 0.06743389504722287
+    },
+    {
+      "id": "V-8",
+      "name": "Tolerance/timestep sensitivity",
+      "state": "PASS",
+      "detail": " E5 loose negative-control observed rel_qnet=0.0117616, dapd=0.294362.",
+      "observed": {
+        "tight_rel_qnet": 0.0007286081985577735,
+        "tight_dapd": 0.019998196271160396,
+        "coarse_rel_qnet": 0.012268186286427316
+      },
+      "threshold": "tight <1%, <1 ms; coarse <2%"
+    },
+    {
+      "id": "V-9",
+      "name": "Independent solver cross-check (SciPy BDF)",
+      "state": "PASS",
+      "detail": "same-IC 1-beat: CVODES APD90=268.981, BDF APD90=268.981, |dAPD|=1.59544e-05 ms",
+      "observed": {
+        "cvodes_apd90": 268.98088223962264,
+        "bdf_apd90": 268.98089819401395,
+        "dapd_ms": 1.59543913014204e-05
+      },
+      "threshold": "|dAPD90|<2 ms on same-IC one-beat"
+    },
+    {
+      "id": "V-10",
+      "name": "Warm-start equivalence",
+      "state": "PASS",
+      "detail": "",
+      "observed": [
+        {
+          "rel_qnet": 0.0008361323553521213,
+          "dapd": 0.017971712755354474
+        },
+        {
+          "rel_qnet": 0.003977320404136316,
+          "dapd": 0.1035492967105256
+        }
+      ],
+      "threshold": "<0.5%, <0.5 ms"
+    },
+    {
+      "id": "V-11",
+      "name": "Known-drug direction",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "qnet": 0.009325794433898341,
+        "apd90": 340.3030876976814
+      },
+      "threshold": "qNet down; APD90 up beyond sensitivity"
+    },
+    {
+      "id": "V-12",
+      "name": "Prior-art ordering sanity",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "dofetilide": 0.009325794433898341,
+        "cisapride": 0.012253443977412019,
+        "diltiazem": 0.043753314305242784,
+        "verapamil": 0.02390422250745011,
+        "sotalol": 0.019978844722336773,
+        "quinidine": -0.025996413134620498
+      },
+      "threshold": null
+    },
+    {
+      "id": "V-13",
+      "name": "K+ directionality",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "qnet_monotone": true,
+        "vrest_more_negative": true
+      },
+      "threshold": null
+    },
+    {
+      "id": "V-14",
+      "name": "Stimulus sensitivity",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "minus20": [
+          0.0,
+          0.0
+        ],
+        "plus20": [
+          0.0,
+          0.0
+        ]
+      },
+      "threshold": "<1% qNet; <2 ms APD90"
+    },
+    {
+      "id": "V-15",
+      "name": "RA reproducibility",
+      "state": "PASS",
+      "detail": "",
+      "observed": {
+        "standard": [],
+        "tight": []
+      },
+      "threshold": null
+    },
+    {
+      "id": "V-16",
+      "name": "Negative controls behave",
+      "state": "PASS",
+      "detail": "",
+      "observed": [
+        {
+          "id": "N-1-loose-solver",
+          "observed": {
+            "rel_qnet": 0.011761604827383575,
+            "dapd": 0.29436159574402154
+          },
+          "safe": true
+        },
+        {
+          "id": "N-2-insufficient-pacing",
+          "observed": {
+            "converged": false,
+            "beats_run": 2
+          },
+          "safe": true
+        },
+        {
+          "id": "N-3-out-of-domain-exposure",
+          "observed": "26x rejected by StateSpec",
+          "safe": true
+        },
+        {
+          "id": "N-4-malformed-data",
+          "observed": "registry rejection",
+          "safe": true
+        },
+        {
+          "id": "N-5-corrupted-model",
+          "observed": "checksum rejection",
+          "safe": true
+        },
+        {
+          "id": "N-6-missing-reference",
+          "observed": {
+            "V6": "PASS",
+            "V7": "PASS"
+          },
+          "safe": true
+        },
+        {
+          "id": "N-7-noncredible-rescue",
+          "observed": "INCOMPLETE_SEARCH",
+          "safe": true
+        },
+        {
+          "id": "N-8-artefactual-EAD",
+          "observed": [
+            "EAD_CANDIDATE"
+          ],
+          "safe": true
+        },
+        {
+          "id": "N-9-nonmonotone-Phi",
+          "observed": "NON_MONOTONIC",
+          "safe": true
+        }
+      ],
+      "threshold": null
+    }
+  ],
+  "aggregate": "VERIFIED",
+  "evidence": {
+    "control": {
+      "qnet_C_per_F": 0.030192508999171672,
+      "apd90_ms": 278.99124021886036,
+      "qnet_simpson_C_per_F": 0.030208612647465098,
+      "v_rest_mV": -87.94093098437779,
+      "v_peak_mV": 40.648147862696035,
+      "beats_run": 2,
+      "convergence": {
+        "converged": true,
+        "c1_apd90_delta_ms": 0.01,
+        "c1_pass": true,
+        "c2_max_state_rel": 1e-05,
+        "c2_pass": true,
+        "c3_nai_delta_mM": 0.0001,
+        "c3_pass": true,
+        "c4_qnet_rel": 0.0001,
+        "c4_pass": true
+      }
+    },
+    "E2": {
+      "dofetilide": {
+        "0.5": {
+          "qnet": 0.01767701175618762,
+          "apd90": 314.8180484961605
+        },
+        "1": {
+          "qnet": 0.009325794433898341,
+          "apd90": 340.3030876976814
+        },
+        "2": {
+          "qnet": -0.0022858534908930927,
+          "apd90": 378.858482055823
+        },
+        "4": {
+          "qnet": -0.016046607446205462,
+          "apd90": 432.26323429293456
+        }
+      },
+      "cisapride": {
+        "1": {
+          "qnet": 0.012253443977412019,
+          "apd90": 333.49955438992407
+        },
+        "4": {
+          "qnet": -0.005207730309953781,
+          "apd90": 394.61866433438206
+        }
+      },
+      "diltiazem": {
+        "1": {
+          "qnet": 0.043753314305242784,
+          "apd90": 246.51891344011352
+        },
+        "4": {
+          "qnet": 0.04986437153687315,
+          "apd90": 226.2145111317953
+        }
+      },
+      "verapamil": {
+        "1": {
+          "qnet": 0.02390422250745011,
+          "apd90": 305.43338823979195
+        },
+        "4": {
+          "qnet": 0.015035881892361281,
+          "apd90": 363.9282380834619
+        }
+      },
+      "sotalol": {
+        "1": {
+          "qnet": 0.019978844722336773,
+          "apd90": 309.24014798817046
+        },
+        "4": {
+          "qnet": 0.005197953809534053,
+          "apd90": 356.88069958284893
+        }
+      },
+      "quinidine": {
+        "1": {
+          "qnet": -0.025996413134620498,
+          "apd90": 489.9387930620176
+        },
+        "4": {
+          "qnet": -0.05499534780030647,
+          "apd90": 680.8557526264287
+        }
+      }
+    },
+    "E3_rank_correlation": 0.7714285714285715,
+    "E4_K_sweep": [
+      {
+        "k_o_mM": 5.4,
+        "qnet": 0.030192508999171672,
+        "v_rest": -87.94093098437779
+      },
+      {
+        "k_o_mM": 5.2,
+        "qnet": 0.029911350816093397,
+        "v_rest": -88.94589757931732
+      },
+      {
+        "k_o_mM": 5.0,
+        "qnet": 0.029751004620592773,
+        "v_rest": -89.99007760200881
+      },
+      {
+        "k_o_mM": 4.800000000000001,
+        "qnet": 0.02967036897925219,
+        "v_rest": -91.07668603271942
+      },
+      {
+        "k_o_mM": 4.6000000000000005,
+        "qnet": 0.029638353207360545,
+        "v_rest": -92.20936193511986
+      },
+      {
+        "k_o_mM": 4.4,
+        "qnet": 0.029609294286160822,
+        "v_rest": -93.39224046822254
+      },
+      {
+        "k_o_mM": 4.2,
+        "qnet": 0.0295511292979091,
+        "v_rest": -94.63004228291128
+      },
+      {
+        "k_o_mM": 4.0,
+        "qnet": 0.02940641994064281,
+        "v_rest": -95.92818954834487
+      },
+      {
+        "k_o_mM": 3.8,
+        "qnet": 0.029106908872358707,
+        "v_rest": -97.29297384554152
+      },
+      {
+        "k_o_mM": 3.6,
+        "qnet": 0.02873337223645182,
+        "v_rest": -98.73189788811216
+      }
+    ],
+    "E7": {
+      "status": "FEASIBLE",
+      "phi_target": 0.0015096254499585837,
+      "best_action": {
+        "class_": "A2_EXPOSURE_REDUCTION",
+        "param": {
+          "drug": "dofetilide",
+          "factor": 0.75
+        },
+        "cost": 0.4150374992788438
+      },
+      "co_optimal": [],
+      "evaluated": [
+        {
+          "action": {
+            "class_": "A0_NO_ACTION",
+            "param": {},
+            "cost": 0.0
+          },
+          "phi": -0.01509594622160772,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.2
+            },
+            "cost": 0.20000000000000018
+          },
+          "phi": -0.016809924410288113,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.4
+            },
+            "cost": 0.40000000000000036
+          },
+          "phi": -0.01603877926479047,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.6
+            },
+            "cost": 0.5999999999999996
+          },
+          "phi": -0.015742289153687607,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.8
+            },
+            "cost": 0.7999999999999998
+          },
+          "phi": -0.015629857556830273,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.0
+            },
+            "cost": 1.0
+          },
+          "phi": -0.015553653251488423,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.2
+            },
+            "cost": 1.2000000000000002
+          },
+          "phi": -0.015457862585761234,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.4
+            },
+            "cost": 1.4000000000000004
+          },
+          "phi": -0.0153107124291819,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.75
+            },
+            "cost": 0.4150374992788438
+          },
+          "phi": 0.011360002736449656,
+          "feasible": true,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.5
+            },
+            "cost": 1.0
+          },
+          "phi": -0.0053791767541082405,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.25
+            },
+            "cost": 2.0
+          },
+          "phi": 0.00034488358069560687,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        }
+      ],
+      "action_set_size": 11,
+      "n_noncredible": 0,
+      "infeasibility": null,
+      "post_margin": null,
+      "post_phi": 0.011360002736449656
+    },
+    "E8": {
+      "status": "INCOMPLETE_SEARCH",
+      "phi_target": 0.0015096254499585837,
+      "best_action": null,
+      "co_optimal": [],
+      "evaluated": [
+        {
+          "action": {
+            "class_": "A0_NO_ACTION",
+            "param": {},
+            "cost": 0.0
+          },
+          "phi": null,
+          "feasible": false,
+          "credibility": "UNKNOWN",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 3.6
+            },
+            "cost": 0.6000000000000001
+          },
+          "phi": -0.039523857190749856,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 3.8
+            },
+            "cost": 0.7999999999999998
+          },
+          "phi": -0.04499474512208747,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.0
+            },
+            "cost": 1.0
+          },
+          "phi": -0.04283535343664737,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.2
+            },
+            "cost": 1.2000000000000002
+          },
+          "phi": -0.04164994244214916,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.4
+            },
+            "cost": 1.4000000000000004
+          },
+          "phi": -0.04081780626808829,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.6
+            },
+            "cost": 1.5999999999999996
+          },
+          "phi": -0.04013101954637937,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 4.8
+            },
+            "cost": 1.7999999999999998
+          },
+          "phi": -0.03952368119463341,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.0
+            },
+            "cost": 2.0
+          },
+          "phi": -0.03895849199805445,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.2
+            },
+            "cost": 2.2
+          },
+          "phi": -0.03842519449088122,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A1_K_CORRECTION",
+            "param": {
+              "k_o_mM": 5.4
+            },
+            "cost": 2.4000000000000004
+          },
+          "phi": -0.03790795233624303,
+          "feasible": false,
+          "credibility": "VERIFIED",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.75
+            },
+            "cost": 0.4150374992788438
+          },
+          "phi": null,
+          "feasible": false,
+          "credibility": "UNKNOWN",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.5
+            },
+            "cost": 1.0
+          },
+          "phi": null,
+          "feasible": false,
+          "credibility": "UNKNOWN",
+          "skipped_out_of_box": false
+        },
+        {
+          "action": {
+            "class_": "A2_EXPOSURE_REDUCTION",
+            "param": {
+              "drug": "dofetilide",
+              "factor": 0.25
+            },
+            "cost": 2.0
+          },
+          "phi": null,
+          "feasible": false,
+          "credibility": "UNKNOWN",
+          "skipped_out_of_box": false
+        }
+      ],
+      "action_set_size": 14,
+      "n_noncredible": 4,
+      "infeasibility": null,
+      "post_margin": null,
+      "post_phi": null
+    },
+    "E9_detail": "verdict=Over k_o_mM = 3.0 -> 5.5 the Tisdale band remains **low** (score interval unchanged at [3, 3]) because its potassium item is a threshold at <= 3.5 mM, while the mechanistic margin in this model falls from +0.0 to 0.0 normalised units and crosses the model-defined boundary at k_o_mM = 3.8333333333333335 mM. The score is **insensitive to this modelled variable over this interval**; this comparison does not establish that the score is incorrect.; intervals=0"
+  },
+  "reference_status": {
+    "apd90": "RECORDED",
+    "qnet": "RECORDED"
+  },
+  "provenance_status": "COMPLETE",
+  "result_hash": "83195e52b7731460b8ae6b80f89ca12bcc868a28ff79dc537fe301b8ca09043d"
+}

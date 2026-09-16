@@ -8,7 +8,7 @@ typedef sunrealtype realtype;
 #define RCONST(x) ((sunrealtype)(x))
 /*
 ohara_rudy_cipa_v1_2017
-Generated on 2026-09-16 03:49:49
+Generated on 2026-09-16 13:08:45
 
 Compiling on GCC:
  $ gcc -Wall -lm -lsundials_nvecserial -lsundials_cvode sim.c
@@ -1154,7 +1154,10 @@ __declspec(dllexport) int simulate_cipa(
     int n_steps,             /* number of steps = cl_ms / dt_log */
     double* out_t,           /* logged time buffer [n_steps] */
     double* out_v,           /* logged voltage buffer [n_steps] */
-    double* out_inet         /* logged net current buffer [n_steps] */
+    double* out_inet,        /* logged net current buffer [n_steps] */
+    double rtol,             /* relative tolerance */
+    double atol,             /* absolute tolerance */
+    double max_step          /* max step size ms */
 ) {
     int flag;
     SUNContext sundials_context;
@@ -1204,6 +1207,7 @@ __declspec(dllexport) int simulate_cipa(
     void* cvode_mem = CVodeCreate(CV_BDF, sundials_context);
     if (!cvode_mem) return -3;
 
+    pace = 0.0;
     flag = CVodeInit(cvode_mem, rhs, 0.0, y);
     if (flag != 0) return -4;
 
@@ -1212,29 +1216,53 @@ __declspec(dllexport) int simulate_cipa(
     flag = CVodeSetLinearSolver(cvode_mem, LS, A);
     if (flag != 0) return -5;
 
-    flag = CVodeSStolerances(cvode_mem, 1e-6, 1e-8);
+    flag = CVodeSStolerances(cvode_mem, rtol > 0.0 ? rtol : 1e-8, atol > 0.0 ? atol : 1e-10);
     if (flag != 0) return -6;
 
     CVodeSetMaxNumSteps(cvode_mem, 100000);
-    CVodeSetMaxStep(cvode_mem, 0.5);
+    if (max_step > 0.0) {
+        CVodeSetMaxStep(cvode_mem, max_step);
+    }
 
     double t = 0.0;
 
     /* Run pacing beats */
     for (int b = 0; b < n_beats; b++) {
         t = 0.0;
+        pace = 0.0;
         flag = CVodeReInit(cvode_mem, 0.0, y);
         if (flag != 0) return -7;
 
         if (b < n_beats - 1) {
             /* Discarded prepacing beat */
             flag = CVode(cvode_mem, 50.0, y, &t, CV_NORMAL);
+            pace = -80.0;
+            flag = CVodeReInit(cvode_mem, 50.0, y);
             flag = CVode(cvode_mem, 50.5, y, &t, CV_NORMAL);
+            pace = 0.0;
+            flag = CVodeReInit(cvode_mem, 50.5, y);
             flag = CVode(cvode_mem, cl_ms, y, &t, CV_NORMAL);
         } else {
             /* Final analysis beat */
             for (int k = 0; k < n_steps; k++) {
                 double t_target = k * dt_log;
+                if (t_target < 50.0) {
+                    if (pace != 0.0) {
+                        pace = 0.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                } else if (t_target >= 50.0 && t_target < 50.5) {
+                    if (pace != -80.0) {
+                        pace = -80.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                } else {
+                    if (pace != 0.0) {
+                        pace = 0.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                }
+
                 if (t_target > 0.0) {
                     flag = CVode(cvode_mem, t_target, y, &t, CV_NORMAL);
                 }

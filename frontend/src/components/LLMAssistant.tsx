@@ -45,7 +45,7 @@ export function LLMAssistant({ simulation }: LLMAssistantProps) {
               <span className="eyebrow">Optional research aid</span>
               <h2>Ask Twin</h2>
             </div>
-            <button className="llm-close" onClick={() => setOpen(false)} aria-label="Close Ask Twin">×</button>
+            <button className="llm-close" onClick={() => setOpen(false)} aria-label="Close Ask Twin">├ù</button>
           </div>
           <textarea value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={2000} rows={3} aria-label="Question" />
           <button className="primary llm-ask" onClick={ask} disabled={loading || !question.trim()}>

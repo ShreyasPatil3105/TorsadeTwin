@@ -5,6 +5,7 @@
 # bound on the true minimum. Budget: max_evals; on exhaustion return Stage A results + BUDGET_EXCEEDED.
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -12,6 +13,9 @@ import numpy as np
 
 from ..schemas.common import StateSpec
 from .phi import PhiEval, scan_monotonicity
+
+# Hard wall-clock limit for interactive responsiveness (seconds).
+_MARGIN_TIMEOUT_S = 15.0
 
 
 @dataclass(frozen=True)
@@ -39,16 +43,25 @@ class MarginResult:
 
 
 class _BudgetedPhi:
-    """Caps real Phi executions across every margin stage at the frozen budget."""
+    """Caps real Phi executions across every margin stage at the frozen budget.
 
-    def __init__(self, phi: Callable[[StateSpec], PhiEval], limit: int):
+    Also enforces a wall-clock time limit so the endpoint never hangs.
+    """
+
+    def __init__(self, phi: Callable[[StateSpec], PhiEval], limit: int,
+                 deadline: float | None = None):
         self.phi = phi
         self.limit = limit
         self.used = 0
         self.exhausted = False
+        self._deadline = deadline  # absolute time.perf_counter value
+
+    @property
+    def timed_out(self) -> bool:
+        return self._deadline is not None and time.perf_counter() > self._deadline
 
     def __call__(self, state: StateSpec) -> PhiEval:
-        if self.used >= self.limit:
+        if self.used >= self.limit or self.timed_out:
             self.exhausted = True
             return PhiEval(phi=None, qnet=None, credibility="UNKNOWN", tags=["E_BUDGET"], n_evals=0)
         self.used += 1
@@ -189,7 +202,8 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
     max_iter = margin_cfg.get("max_iter_bisect", 20)
     max_evals = margin_cfg.get("max_evals", 300)
     evals: list[PhiEval] = []
-    budget = _BudgetedPhi(phi, max_evals)
+    deadline = time.perf_counter() + _MARGIN_TIMEOUT_S
+    budget = _BudgetedPhi(phi, max_evals, deadline=deadline)
     now = budget(x0)
     evals.append(now)
     if now.phi is None or now.credibility != "VERIFIED":
@@ -243,7 +257,7 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
         else:
             axis_results.append(AxisResult(axis=a, distance=None, critical_raw_value=None,
                                           direction=None, monotonicity=mono, all_roots=axis_roots_raw, reachable=False))
-        if budget.exhausted:
+        if budget.exhausted or budget.timed_out:
             break
 
     # ---- Stage B: direction-sampled multi-axis minimisation ----
@@ -252,21 +266,20 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
     # SPEC still allows BUDGET_EXCEEDED; this prevents Stage B alone from always forcing it.
     best_status_b = None
     stage_a_used = budget.used
-    if len(axes) >= 2 and not budget.exhausted:
+    if len(axes) >= 2 and not budget.exhausted and not budget.timed_out:
         dirs = _sample_directions(len(axes), margin_cfg)
         u0 = space.u0()
         step = margin_cfg.get("directions", {}).get("radial_step", 0.25)
-        max_b_bisect = margin_cfg.get("directions", {}).get("max_iter_bisect_stage_b", 15)
-        # Hard Stage-B sub-budget: leave room for Stage C and avoid consuming the
-        # entire global 300 on direction fan-out (64 angles × radial probes).
+        max_b_bisect = margin_cfg.get("directions", {}).get("max_iter_bisect_stage_b", 6)
+        # Hard Stage-B sub-budget: keep total margin time interactive.
+        # Each phi eval ≈ 100ms, so 20 evals ≈ 2s. Stage A already found
+        # the axis-wise boundary; Stage B only refines the multi-axis case.
         remaining_after_a = max_evals - stage_a_used
-        # Allow Stage B at most half of remaining, capped so typical 2-axis
-        # problems finish Stage B+C inside 300 with Stage A results intact.
-        stage_b_cap = min(remaining_after_a, max(32, remaining_after_a // 2))
+        stage_b_cap = min(20, remaining_after_a)
         stage_b_limit = stage_a_used + stage_b_cap
-        reserve_c = min(20, max(0, max_evals - stage_b_limit))
+        reserve_c = min(10, max(0, max_evals - stage_b_limit))
         for dvec in dirs:
-            if budget.exhausted or budget.used >= stage_b_limit:
+            if budget.exhausted or budget.used >= stage_b_limit or budget.timed_out:
                 break
             if max_evals - budget.used < 3:
                 break
@@ -286,10 +299,10 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
             max_radial = _max_radial(dvec, box_lo, box_hi, space)
             z = step
             # Cap radial probes so one direction cannot consume the global budget.
-            max_radial_steps = 16
+            max_radial_steps = 4
             steps = 0
             while z + step <= max_radial and steps < max_radial_steps:
-                if budget.exhausted or budget.used >= stage_b_limit:
+                if budget.exhausted or budget.used >= stage_b_limit or budget.timed_out:
                     break
                 z += step
                 steps += 1
@@ -305,12 +318,12 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
                     hi_z = z
                     break
                 prev_phi = res.phi
-            if hi_z is not None and not budget.exhausted:
+            if hi_z is not None and not budget.exhausted and not budget.timed_out:
                 lo = 0.0
                 hi = hi_z
                 f_lo = phi_now
-                for _ in range(max_b_bisect):
-                    if budget.exhausted or budget.used >= stage_b_limit:
+                for _ in range(min(max_b_bisect, 8)):
+                    if budget.exhausted or budget.used >= stage_b_limit or budget.timed_out:
                         break
                     mid = 0.5 * (lo + hi)
                     u = u0 + dvec * mid
@@ -332,23 +345,28 @@ def compute_margin(phi: Callable[[StateSpec], PhiEval], x0: StateSpec, axes: lis
 
     # ---- Stage C: SLSQP refinement ----
     best_status_c = None
-    if best_z is not None and not budget.exhausted:
+    if best_z is not None and not budget.exhausted and not budget.timed_out:
         try:
             from scipy.optimize import minimize  # type: ignore
+
+            stage_c_limit = budget.used + min(10, max(0, max_evals - budget.used - 5))
 
             def obj(z: np.ndarray) -> float:
                 return _weighted_distance(z, w)
 
             def cons(z: np.ndarray) -> float:
+                if budget.used >= stage_c_limit or budget.exhausted:
+                    return float("nan")
                 u = space.unnormalised(z)
                 state = space.state_from_u(u)
                 value = budget(state).phi
                 return value if value is not None else float("nan")
 
+            maxiter_c = min(margin_cfg.get("stage_c", {}).get("maxiter", 30), 15)
             res = minimize(obj, best_z, method="SLSQP",
                             constraints={"type": "eq", "fun": cons},
                             bounds=[(box_lo[i] - space.u0()[i], box_hi[i] - space.u0()[i]) for i in range(len(axes))],
-                            options={"maxiter": margin_cfg.get("stage_c", {}).get("maxiter", 30)})
+                            options={"maxiter": maxiter_c})
             if res.success:
                 z_c = res.x
                 d_c = _weighted_distance(z_c, w)
@@ -397,7 +415,7 @@ def _status_label(status: str) -> str:
 def _sample_directions(dim: int, margin_cfg: dict) -> list[np.ndarray]:
     dirs = margin_cfg.get("directions", {})
     if dim == 2:
-        n = dirs.get("n_angles_2d", 64)
+        n = min(dirs.get("n_angles_2d", 64), 16)
         out = []
         for k in range(n):
             th = 2.0 * np.pi * k / n
