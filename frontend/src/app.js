@@ -8,7 +8,7 @@ const state = {
   solver: "standard", comboRule: "indep_mult", tau: 0.05,
   simulate: null, margin: null, rescue: null, blindspot: null,
   busy: false, busyOp: null, error: null, activeTab: "mechanism", activeNav: "overview",
-  history: [], apiOnline: false,
+  history: [], apiOnline: false, llmAnswer: null, llmError: null, llmBusy: false, llmQuestion: "",
 };
 
 const frozenCopy = {
@@ -163,6 +163,41 @@ async function exportReport(){
   }catch(e){toast(e.message,"error")}finally{setBusy(false)}
 }
 
+async function askTwin(){
+  const question = ($("#llm-question")?.value || state.llmQuestion || "").trim();
+  if(!question) return;
+  state.llmQuestion = question;
+  state.llmBusy = true; state.llmAnswer = null; state.llmError = null; render();
+  try{
+    const context = {
+      drug: state.selectedDrug,
+      exposure_multiplier: state.exposure,
+      k_o_mM: state.k,
+      ...(state.simulate ? {
+        qnet_C_per_F: state.simulate.qnet_C_per_F,
+        apd90_ms: state.simulate.apd90_ms,
+        phi_C_per_F: state.simulate.phi_C_per_F,
+        credibility: state.simulate.credibility
+      } : {}),
+      ...(state.margin ? {
+        margin: state.margin.m_signed,
+        margin_status: state.margin.m_status,
+        binding_axis: state.margin.binding_constraint?.axis
+      } : {})
+    };
+    const result = await api("/llm/explain", {
+      method: "POST",
+      body: JSON.stringify({ question, context })
+    });
+    state.llmAnswer = result.answer;
+  }catch(e){
+    state.llmError = e.message;
+  }finally{
+    state.llmBusy = false;
+    render();
+  }
+}
+
 function render(){
   const root=$("#app");
   root.innerHTML=`
@@ -170,12 +205,12 @@ function render(){
     <aside class="rail">
       <div class="brand-mini"><span class="pulse-mark"></span><span>TorsadeTwin</span></div>
       <nav>
-        ${nav("overview","Overview","Complete workflow","⌂")}
-        ${nav("new","New Analysis","Run a scenario","＋")}
-        ${nav("drugs","Drug Library","6 curated drugs","◈")}
-        ${nav("history","Results History","Current session","↺")}
+        ${nav("overview","Overview","Complete workflow","🏠")}
+        ${nav("new","New Analysis","Run a scenario","▶")}
+        ${nav("drugs","Drug Library","6 curated drugs","💊")}
+        ${nav("history","Results History","Current session","⏱")}
         ${nav("validation","Validation","Model verification","✓")}
-        ${nav("docs","Documentation","Methods & data","▤")}
+        ${nav("docs","Documentation","Methods & data","📄")}
       </nav>
       <div class="rail-bottom">
         <div class="model-card">
@@ -233,7 +268,7 @@ function render(){
             <label>CYCLE LENGTH <div class="range-wrap"><input id="cl" type="range" min="500" max="2000" step="100" value="${state.cl}" ${state.margin?"":"disabled"}><output>${state.cl} ms</output></div><span class="hint">qNet / Margin / Rescue require CL 2000 ms.</span></label>
           </div>
           <div class="action-row">
-            <button class="primary" id="simulate" ${state.busy?"disabled":""}>${state.busyOp==="simulate"?'<span><span class="spin-dot"></span> Simulating...</span>':'<span>Run simulation</span><b>↗</b>'}</button>
+            <button class="primary" id="simulate" ${state.busy?"disabled":""}>${state.busyOp==="simulate"?'<span><span class="spin-dot"></span> Simulating...</span>':'<span>Run simulation</span><b>↵</b>'}</button>
             <button class="secondary ${state.busyOp==="margin"?"is-loading":""}" id="margin" ${state.busy?"disabled":""}>${state.busyOp==="margin"?'<span class="spin-dot"></span> Calculating margin (~12s)...':'Calculate margin'}</button>
             <button class="secondary ${state.busyOp==="rescue"?"is-loading":""}" id="rescue" ${state.busy||!state.simulate?"disabled":""}>${state.busyOp==="rescue"?'<span class="spin-dot"></span> Running rescue...':'Run rescue'}</button>
           </div>
@@ -254,6 +289,18 @@ function render(){
       ${resultsSection()}
       ${tabsSection()}
 
+      <div class="llm-assistant">
+        <div class="llm-panel">
+          <div class="section-kicker">OPTIONAL RESEARCH AID</div>
+          <div class="llm-title">Ask Twin</div>
+          <textarea id="llm-question" rows="2" maxlength="2000" placeholder="Ask about the current model result...">${esc(state.llmQuestion||"")}</textarea>
+          <button class="primary llm-ask" id="llm-ask" ${state.llmBusy?"disabled":""}>${state.llmBusy?"Asking…":"Ask"}</button>
+          ${state.llmError?`<div class="llm-error">${esc(state.llmError)}</div>`:""}
+          ${state.llmAnswer?`<div class="llm-answer">${esc(state.llmAnswer)}</div>`:""}
+          <div class="llm-disclaimer">Research explanation only. Not medical advice.</div>
+        </div>
+      </div>
+
       <footer class="footer">
         <div><b>TorsadeTwin</b> · VIT Chennai · In-silico research prototype</div>
         <div>For research use only · Not for clinical decision-making</div>
@@ -269,21 +316,21 @@ function step(n,t,s,on){return `<div class="flow-step ${on?"on":""}"><span class
 
 function resultsSection(){
   const s=state.simulate, m=state.margin, r=state.rescue;
-  if(!s && !m && !r) return `<section class="empty-state panel"><div class="empty-symbol">∿</div><div><div class="section-kicker">ANALYSIS WORKBENCH</div><h2>Awaiting a declared scenario</h2><p>Run a simulation to populate electrophysiology, then calculate Margin and explore the finite Rescue action set.</p></div></section>`;
+  if(!s && !m && !r) return `<section class="empty-state panel"><div class="empty-symbol">⌀</div><div><div class="section-kicker">ANALYSIS WORKBENCH</div><h2>Awaiting a declared scenario</h2><p>Run a simulation to populate electrophysiology, then calculate Margin and explore the finite Rescue action set.</p></div></section>`;
   const q=s?.qnet_C_per_F, ctrl=s?.qnet_ctrl_C_per_F, bd=s?.qnet_boundary_C_per_F;
   const phi=s?.phi_C_per_F ?? (m?.phi_now);
   const delta=Number.isFinite(q)&&Number.isFinite(ctrl)?(q/ctrl-1)*100:null;
   const status=m?.m_status||"PENDING";
   return `<section class="results">
     <div class="result-head"><div><div class="section-kicker">02 / RESULTS</div><h2>Analysis output</h2></div>
-      <div class="result-actions"><span class="tiny-pill ${credClass(s?.credibility||m?.credibility)}">${credLabel(s?.credibility||m?.credibility)}</span><span class="mono">Φ evaluations ${m?.n_phi_evals??"—"}</span><button id="report2" class="secondary">Export report</button></div>
+      <div class="result-actions"><span class="tiny-pill ${credClass(s?.credibility||m?.credibility)}">${credLabel(s?.credibility||m?.credibility)}</span><span class="mono">φ evaluations ${m?.n_phi_evals??"—"}</span><button id="report2" class="secondary">Export report</button></div>
     </div>
     <div class="metric-grid">
       ${metric("CONTROL qNet",fmt(ctrl,5),"µC/µF","reference")}
       ${metric("SCENARIO qNet",fmt(q,5),"µC/µF",delta!==null?pct(delta):"")}
       ${metric("MODEL-DEFINED BOUNDARY",fmt(bd,5),"µC/µF","75% of control")}
-      ${metric("Φ = qNet − boundary",fmt(phi,7),"µC/µF",status)}
-      ${metric("MODEL-DEFINED MARGIN (M̂)",m?.m_signed!=null?(m?.m_status==="SAMPLED_UB"?"≤ ":"")+fmt(m.m_signed,4):"—","normalised units",m?(m.binding_constraint?.axis?`binding: ${m.binding_constraint.axis}`:m.m_status):"awaiting calculation")}
+      ${metric("φ = qNet ⇒ boundary",fmt(phi,7),"µC/µF",status)}
+      ${metric("MODEL-DEFINED MARGIN (M̃)",m?.m_signed!=null?(m?.m_status==="SAMPLED_UB"?"≈ ":"")+fmt(m.m_signed,4):"—","normalised units",m?(m.binding_constraint?.axis?`binding: ${m.binding_constraint.axis}`:m.m_status):"awaiting calculation")}
     </div>
     <div class="viz-grid">
       <div class="panel chart-panel"><div class="panel-head"><h3>Action potential</h3><span>final analysis beat</span></div>${traceSVG(s?.trace)}</div>
@@ -336,7 +383,7 @@ function marginBar(q,bd,m){
     <div class="margin-copy">
       ${hasM ? `
         <div class="margin-badge-row">
-          <span class="margin-val">${m.m_status==="SAMPLED_UB"?"≤ ":""}${fmt(m.m_signed,4)}</span>
+          <span class="margin-val">${m.m_status==="SAMPLED_UB"?"≈ ":""}${fmt(m.m_signed,4)}</span>
           <span class="margin-unit">normalised units</span>
           <span class="tiny-pill ${m.m_signed > 0 ? "good" : "failed"}">${m.m_signed > 0 ? "OUTSIDE RISK ZONE" : "INSIDE RISK ZONE"}</span>
         </div>
@@ -353,7 +400,7 @@ function marginBar(q,bd,m){
     </div>
   </div>`;
 }
-function statusLabel(s){return s==="SAMPLED_UB"?"≤ upper bound":s==="BUDGET_EXCEEDED"?"Budget exceeded":s||"Awaiting margin";}
+function statusLabel(s){return s==="SAMPLED_UB"?"≈ upper bound":s==="BUDGET_EXCEEDED"?"Budget exceeded":s||"Awaiting margin";}
 function formatAction(act){
   if(!act) return "—";
   const c = act.class || act.class_;
@@ -367,8 +414,8 @@ function formatAction(act){
 function rescueSummary(r){
   const best=r.best_action;
   return `<div class="rescue-grid"><div class="panel rescue-table"><div class="panel-head"><h3>Rescue analysis</h3><span>${esc(r.status||"")}</span></div>
-    <table><thead><tr><th>Action</th><th>Cost</th><th>Φ after</th><th>Status</th></tr></thead><tbody>${(r.evaluated||[]).map(e=>`<tr><td>${esc(e.action)}</td><td class="mono">${fmt(e.cost,3)}</td><td class="mono ${e.phi>0?'text-good':''}">${fmt(e.phi,6)}</td><td><span class="state-dot ${e.feasible?"good":"neutral"}">${e.feasible?"FEASIBLE":"NOT FEASIBLE"}</span></td></tr>`).join("")}</tbody></table></div>
-    <div class="panel best-card"><div class="section-kicker">BEST MODELED RESCUE</div>${best?`<h3>${esc(formatAction(best))}</h3><div class="best-number">${fmt(best.phi_after,6)}</div><span>Φ after · margin ${fmt(best.margin_after,4)}</span>`:`<h3>No feasible single action</h3><p>${esc(r.infeasibility?.explanation||"See the evaluated action set.")}</p>`}<div class="notice">${frozenCopy.rescue}</div></div></div>`;
+    <table><thead><tr><th>Action</th><th>Cost</th><th>φ after</th><th>Status</th></tr></thead><tbody>${(r.evaluated||[]).map(e=>`<tr><td>${esc(e.action)}</td><td class="mono">${fmt(e.cost,3)}</td><td class="mono ${e.phi>0?'text-good':''}">${fmt(e.phi,6)}</td><td><span class="state-dot ${e.feasible?"good":"neutral"}">${e.feasible?"FEASIBLE":"NOT FEASIBLE"}</span></td></tr>`).join("")}</tbody></table></div>
+    <div class="panel best-card"><div class="section-kicker">BEST MODELED RESCUE</div>${best?`<h3>${esc(formatAction(best))}</h3><div class="best-number">${fmt(best.phi_after,6)}</div><span>φ after · margin ${fmt(best.margin_after,4)}</span>`:`<h3>No feasible single action</h3><p>${esc(r.infeasibility?.explanation||"See the evaluated action set.")}</p>`}<div class="notice">${frozenCopy.rescue}</div></div></div>`;
 }
 function tabsSection(){
   const tabList = [
@@ -403,7 +450,7 @@ function mechanismTab(){
 }
 function marginTab(){
   const m=state.margin;if(!m)return `<div class="empty-tab"><h3>Margin not calculated</h3><p>Run Calculate margin to populate the adaptive boundary search.</p></div>`;
-  return `<div class="two-col"><div><div class="section-kicker">BOUNDARY SEARCH</div><h3>${esc(m.m_label||"Model-defined margin")}</h3><div class="large-number">${m.m_status==="SAMPLED_UB"?"≤ ":""}${fmt(m.m_signed,4)} <small>normalised units</small></div><p>${frozenCopy.margin}</p>
+  return `<div class="two-col"><div><div class="section-kicker">BOUNDARY SEARCH</div><h3>${esc(m.m_label||"Model-defined margin")}</h3><div class="large-number">${m.m_status==="SAMPLED_UB"?"≈ ":""}${fmt(m.m_signed,4)} <small>normalised units</small></div><p>${frozenCopy.margin}</p>
   <table><thead><tr><th>Axis</th><th>Distance</th><th>Critical value</th><th>Direction</th><th>Reachable</th></tr></thead><tbody>${(m.axes||[]).map(a=>`<tr><td>${esc(a.axis)}</td><td class="mono">${a.distance==null?"—":fmt(a.distance,4)}</td><td class="mono">${a.critical_raw_value==null?"—":fmt(a.critical_raw_value,3)}</td><td>${esc(a.direction||"—")}</td><td>${a.reachable?"YES":"NO"}</td></tr>`).join("")}</tbody></table></div>
   <div class="binding"><div class="section-kicker">BINDING CONSTRAINT</div><h3>${esc(m.binding_constraint?.axis||"—")}</h3><p>Critical value: <b>${fmt(m.binding_constraint?.critical_raw_value,4)}</b></p><p>Alternative axis: ${esc(m.binding_constraint?.alternative_axis||"—")}</p><p class="muted">Evaluations: ${m.n_phi_evals??"—"} · ${esc(m.m_status)}</p></div></div>`;
 }
@@ -432,7 +479,7 @@ function rescueTab(){
         <span class="tau-label">SAFETY TARGET BUFFER (τ):</span>
         <div class="pill-group">
           <button class="pill-btn ${(state.tau ?? 0.05) === 0.05 ? "active" : ""}" data-tau="0.05" title="Requires safety margin 5% above qNet boundary">Standard 5% Buffer (τ = 0.05)</button>
-          <button class="pill-btn ${(state.tau ?? 0.05) === 0 ? "active" : ""}" data-tau="0" title="Requires crossing the boundary (Φ ≥ 0)">Boundary Crossing (τ = 0.00)</button>
+          <button class="pill-btn ${(state.tau ?? 0.05) === 0 ? "active" : ""}" data-tau="0" title="Requires crossing the boundary (φ ≥ 0)">Boundary Crossing (τ = 0.00)</button>
         </div>
       </div>
       <button class="btn-sm secondary ${state.busyOp==='rescue'?'is-loading':''}" id="re-rescue">${state.busyOp==='rescue'?'Evaluating...':'Re-evaluate action set'}</button>
@@ -443,7 +490,7 @@ function rescueTab(){
         <tr>
           <th>Permitted Clinical Action</th>
           <th>Relative Cost</th>
-          <th>Φ Achieved</th>
+          <th>φ Achieved</th>
           <th>Credibility</th>
           <th>Feasibility</th>
         </tr>
@@ -477,7 +524,7 @@ function rescueTab(){
             <b>${esc(formatAction(closest))}</b>
           </div>
           <div class="infeas-detail-item">
-            <span class="detail-label">Achieved Repolarization (Φ)</span>
+            <span class="detail-label">Achieved Repolarization (φ)</span>
             <b class="mono ${closest?.phi > 0 ? 'text-good' : ''}">${fmt(closest?.phi, 6)} C/F</b>
           </div>
           <div class="infeas-detail-item">
@@ -495,7 +542,7 @@ function rescueTab(){
           <p>
             • <b>Extracellular Potassium:</b> Baseline K⁺ is already at the clinical ceiling (<b>5.4 mM</b>); further infusion is prohibited by hyperkalemic toxicity rules.<br>
             • <b>Discontinuation:</b> Dofetilide is a restricted inpatient antiarrhythmic with <code>discontinuable: false</code>; abrupt cessation without electrophysiologist supervision is unsafe.<br>
-            • <b>Dose De-escalation:</b> Dose reduction to <b>25% exposure</b> successfully restores the cell into the safe repolarization zone (<b>Φ = +0.00146 &gt; 0</b>), but falls just <b>0.00005 C/F</b> short of the strict +5% safety buffer target.
+            • <b>Dose De-escalation:</b> Dose reduction to <b>25% exposure</b> successfully restores the cell into the safe repolarization zone (<b>φ = +0.00146 &gt; 0</b>), but falls just <b>0.00005 C/F</b> short of the strict +5% safety buffer target.
           </p>
         </div>
 
@@ -533,7 +580,7 @@ function historyTab(){
           <th>Drug & Exposure</th>
           <th>Extracellular K⁺</th>
           <th>qNet</th>
-          <th>Signed Margin (M̂)</th>
+          <th>Signed Margin (M̃)</th>
           <th>Status / Binding</th>
           <th>Action</th>
         </tr>
@@ -587,10 +634,10 @@ Model boundary: 75% of control = 0.02264 µC/µF</pre>
 
       <div class="doc-card">
         <div class="section-kicker">03 / MATHEMATICAL NOVELTY</div>
-        <h3>Signed Safety Margin M̂(x₀)</h3>
-        <p>Measures the minimum weighted distance in normalised state space to the critical boundary Φ = 0, signed positive if safe and negative if within the proarrhythmic risk zone.</p>
-        <pre>Φ(x) = qNet(x) - 0.75 · qNet_ctrl
-M̂(x₀) = sign(Φ(x₀)) · min_{x ∈ ∂S} ||x - x₀||_W
+        <h3>Signed Safety Margin M̃(x₀)</h3>
+        <p>Measures the minimum weighted distance in normalised state space to the critical boundary φ = 0, signed positive if safe and negative if within the proarrhythmic risk zone.</p>
+        <pre>φ(x) = qNet(x) - 0.75 · qNet_ctrl
+M̃(x₀) = sign(φ(x₀)) · min_{x ∈ ∂S} ||x - x₀||_W
 Search budget: 300 evaluations across potassium and drug axes</pre>
       </div>
 
@@ -628,6 +675,14 @@ function bind(){
   }));
   $("#verify")?.addEventListener("click",()=>{state.activeNav="validation";state.activeTab="verification";render()});$("#verify2")?.addEventListener("click",runVerify);
   $("#report")?.addEventListener("click",exportReport);$("#report2")?.addEventListener("click",exportReport);
+  $("#llm-ask")?.addEventListener("click",askTwin);
+  $("#llm-question")?.addEventListener("input",e=>{state.llmQuestion=e.target.value;});
+  $("#llm-question")?.addEventListener("keydown",e=>{
+    if(e.key==="Enter" && !e.shiftKey){
+      e.preventDefault();
+      askTwin();
+    }
+  });
   $("#blindspot")?.addEventListener("click",runBlindspot);
   $$("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
     state.activeTab=b.dataset.tab;

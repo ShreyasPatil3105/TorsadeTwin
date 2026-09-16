@@ -94,6 +94,12 @@ export interface VerifyResponse {
   battery: Record<string, unknown> | null;
 }
 
+export interface LLMExplainResponse {
+  answer: string;
+  model: string;
+  disclaimer: string;
+}
+
 export interface Scenario {
   scenario_id: string;
   title: string;
@@ -137,4 +143,6 @@ export const api = {
   rescue: (req: Record<string, unknown>) => post<RescueResponse>("/rescue", req),
   blindspot: (req: Record<string, unknown>) => post<Record<string, unknown>>("/blindspot", req),
   verify: (req: Record<string, unknown>) => post<VerifyResponse>("/verify", req),
+  llmExplain: (req: { question: string; context?: Record<string, unknown> }) =>
+    post<LLMExplainResponse>("/llm/explain", req),
 };

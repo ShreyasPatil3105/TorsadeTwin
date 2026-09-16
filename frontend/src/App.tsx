@@ -15,6 +15,7 @@ import { VerificationTable } from "./components/VerificationTable";
 import { ProvenancePanel } from "./components/ProvenancePanel";
 import { useStore } from "./state/store";
 import { DISCLAIMERS, RESEARCH_FRAMING } from "./copy/strings";
+import { LLMAssistant } from "./components/LLMAssistant";
 
 export default function App() {
   const store = useStore();
@@ -86,6 +87,7 @@ export default function App() {
         {bottomTab === 2 && <VerificationTable />}
         {bottomTab === 3 && <ProvenancePanel />}
       </footer>
+      <LLMAssistant simulation={store.simulate} />
     </div>
   );
 }

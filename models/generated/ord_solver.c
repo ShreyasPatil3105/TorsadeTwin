@@ -8,7 +8,7 @@ typedef sunrealtype realtype;
 #define RCONST(x) ((sunrealtype)(x))
 /*
 ohara_rudy_cipa_v1_2017
-Generated on 2026-09-16 03:49:49
+Generated on 2026-09-16 11:52:52
 
 Compiling on GCC:
  $ gcc -Wall -lm -lsundials_nvecserial -lsundials_cvode sim.c
@@ -1184,12 +1184,6 @@ __declspec(dllexport) int simulate_cipa(
     AC_GK1 = AC_GK1 * g_k1;
     AC_Gto = AC_Gto * g_to;
 
-    AC_i_Stim_Start = 50.0;
-    AC_i_Stim_End = 1e17;
-    AC_i_Stim_Period = cl_ms;
-    AC_i_Stim_PulseDuration = 0.5;
-    AC_i_Stim_Amplitude = -80.0;
-
     /* Copy initial state or use defaults */
     if (state_inout != NULL && state_inout[0] != 0.0) {
         for (int i = 0; i < N_STATE; i++) {
@@ -1204,6 +1198,7 @@ __declspec(dllexport) int simulate_cipa(
     void* cvode_mem = CVodeCreate(CV_BDF, sundials_context);
     if (!cvode_mem) return -3;
 
+    pace = 0.0;
     flag = CVodeInit(cvode_mem, rhs, 0.0, y);
     if (flag != 0) return -4;
 
@@ -1223,18 +1218,40 @@ __declspec(dllexport) int simulate_cipa(
     /* Run pacing beats */
     for (int b = 0; b < n_beats; b++) {
         t = 0.0;
+        pace = 0.0;
         flag = CVodeReInit(cvode_mem, 0.0, y);
         if (flag != 0) return -7;
 
         if (b < n_beats - 1) {
-            /* Discarded prepacing beat */
+            /* Prepacing beat */
             flag = CVode(cvode_mem, 50.0, y, &t, CV_NORMAL);
+            pace = -80.0;
+            flag = CVodeReInit(cvode_mem, 50.0, y);
             flag = CVode(cvode_mem, 50.5, y, &t, CV_NORMAL);
+            pace = 0.0;
+            flag = CVodeReInit(cvode_mem, 50.5, y);
             flag = CVode(cvode_mem, cl_ms, y, &t, CV_NORMAL);
         } else {
             /* Final analysis beat */
             for (int k = 0; k < n_steps; k++) {
                 double t_target = k * dt_log;
+                if (t_target < 50.0) {
+                    if (pace != 0.0) {
+                        pace = 0.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                } else if (t_target >= 50.0 && t_target < 50.5) {
+                    if (pace != -80.0) {
+                        pace = -80.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                } else {
+                    if (pace != 0.0) {
+                        pace = 0.0;
+                        CVodeReInit(cvode_mem, t, y);
+                    }
+                }
+
                 if (t_target > 0.0) {
                     flag = CVode(cvode_mem, t_target, y, &t, CV_NORMAL);
                 }

@@ -43,6 +43,8 @@ ERROR_TABLE = {
     "E_NO_UPSTROKE": (422, "No upstroke detected in the analysis beat."),
     "E_BUDGET": (200, "Budget exceeded; partial result returned with degraded credibility."),
     "E_UNITS": (503, "Data unit check failed; refusing to start."),
+    "E_LLM_NOT_CONFIGURED": (503, "The optional LLM integration is not configured."),
+    "E_LLM_UNAVAILABLE": (502, "The optional LLM provider is unavailable."),
 }
 
 

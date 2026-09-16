@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -26,9 +27,31 @@ from .schemas.margin import MarginRequest
 from .schemas.report import ReportRequest
 from .schemas.rescue import RescueRequest
 from .schemas.simulate import SimulateRequest
+from .schemas.llm import LLMExplainRequest, LLMExplainResponse
 from .services.errors import TorsadeTwinError
+from .services.groq_llm import explain as explain_with_groq
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_env(root: Path) -> None:
+    env_file = root / ".env"
+    if env_file.is_file():
+        try:
+            with env_file.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+
+_load_env(ROOT)
 
 
 def create_app(config_root: Path | None = None, registry: DrugRegistry | None = None,
@@ -116,6 +139,15 @@ def create_app(config_root: Path | None = None, registry: DrugRegistry | None = 
                 "gates": battery.get("gates", {}), "experiments": battery.get("experiments", {}),
                 "run_on": battery.get("run_on"), "result_hash": battery.get("result_hash"),
                 "credibility_implication": "VERIFIED" if battery.get("aggregate") == "VERIFIED" else battery.get("aggregate", "UNVERIFIED")}
+
+    @app.post("/api/v1/llm/explain", response_model=LLMExplainResponse)
+    def llm_explain(req: LLMExplainRequest):
+        answer, model = explain_with_groq(req.question, req.context)
+        return LLMExplainResponse(
+            answer=answer,
+            model=model,
+            disclaimer="Research explanation only. Not medical advice.",
+        )
 
     @app.post("/api/v1/simulate")
     def simulate(req: SimulateRequest):
